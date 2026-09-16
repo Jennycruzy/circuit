@@ -59,7 +59,7 @@ pattern is a custom validator that independently re-runs the task and compares
 the decision field(s) with tolerance. Circuit will therefore use
 `run_nondet_unsafe` with a validator that re-measures, re-fetches, re-judges,
 and compares the **verdict tier** (exact) and **confidence** (tolerance, with a
-gate at tier boundaries). Recorded in PROGRESS.md. The consensus spike (§3.3)
+threshold at tier boundaries). Recorded in PROGRESS.md. The consensus spike (§3.3)
 tests this pattern.
 
 ### Q3. Web access constraints — 2026-09-16 09:45 UTC
@@ -267,5 +267,44 @@ Verified facts (all executed, not read):
 ### Open: IC→EVM on Studio Next
 Docs (messages page): "Studio: EVM contract interaction beyond value transfers
 to EOAs is not implemented … Ghost contracts are not implemented." Studio Next
-is still Studio. To be tested by execution next (spike 3); if confirmed, the
-DemoVault becomes an Intelligent Contract paused via an IC→IC internal message.
+is still Studio. The deployed probe was called on 2026-09-16, but the target
+address has no bytecode or GenLayer contract schema, so the result is not a
+valid EVM interoperability test. The transaction remains unresolved; no
+pause call was emitted.
+
+## Audit review — 2026-09-16 12:32 UTC
+
+This review records the checks performed after the previous project handoff.
+It does not convert pending or missing network state into a result.
+
+### Network and deployment
+
+- JavaScript client: `genlayer-js 2.0.0-rc.1`; Studio-dev chain: 61997; RPC:
+  `https://studio-dev.genlayer.com/api`.
+- A live hello read returned `last_status: 200`, `last_body_len: 559`, and
+  `runs: 1`. A live probe read returned an empty state.
+- Public RPC checks returned no EVM bytecode for the hello contract, probe, or
+  recorded target. The target's `gen_getContractCode` and
+  `gen_getContractSchema` calls returned `Contract ... not found`; no target
+  contract is deployed.
+
+### Probe transaction
+
+- The real `view_paused` call was submitted with hash
+  `0xfc423a5653ae69efaaf6444a3a31535958b2fab2655acc60619cbcfe9681f27b`.
+- The last inspection showed `PROPOSING`, `NOT_VOTED`, zero rounds, no
+  consensus data, and no receipt. The helper later received HTML instead of
+  JSON-RPC, so the transaction is unresolved and is not evidence that EVM
+  calls work or fail.
+- `emit_pause` was not submitted because there is no deployed target.
+
+### SDK and documentation
+
+- Current EVM docs confirm that `@gl.evm.contract_interface` is the documented
+  interface for EVM view and write calls; that decorator is not a defect.
+- Current messages docs say Studio does not implement EVM contract interaction
+  beyond value transfers to EOAs, and external messages execute through Ghost
+  only after finality. The Solidity/Ghost path cannot be claimed here.
+- Current fee docs require a message fee budget for message-producing branches.
+  `scripts/write.cjs` uses the generic estimator and waits only for a decided
+  receipt, so it is not ready for a pause call.
