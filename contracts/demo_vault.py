@@ -14,7 +14,7 @@ from genlayer.types import *
 ZERO_ADDRESS = Address("0x0000000000000000000000000000000000000000")
 
 # Methods a hostile proposal could abuse; Circuit's DECODE step reads this list.
-PRIVILEGED = ["set_owner", "set_fee_bps", "sweep", "pause"]
+PRIVILEGED = ["set_owner", "set_fee_bps", "sweep", "pause", "restrict"]
 
 
 @gl.evm.contract_interface
@@ -42,11 +42,16 @@ class Paused(gl.chain.Event):
     def __init__(self, controller: Address, /, **blob): ...
 
 
+class Restricted(gl.chain.Event):
+    def __init__(self, controller: Address, /, **blob): ...
+
+
 class DemoVault(gl.contract.Contract):
     controller: Address
     initializer: Address
     owner: Address
     paused: bool
+    restricted: bool      # deposits blocked, withdrawals still allowed (RESTRICT tier)
     fee_bps: u256
     total_deposits: u256
     total_withdrawals: u256
@@ -58,6 +63,7 @@ class DemoVault(gl.contract.Contract):
         self.initializer = Address(initializer)
         self.owner = Address(initializer)
         self.paused = False
+        self.restricted = False
         self.fee_bps = 0
         self.total_deposits = 0
         self.total_withdrawals = 0
@@ -84,6 +90,8 @@ class DemoVault(gl.contract.Contract):
     def deposit(self) -> None:
         if self.paused:
             raise gl.vm.UserError("vault is paused")
+        if self.restricted:
+            raise gl.vm.UserError("deposits are restricted")
 
         amount = gl.message.value
         if amount <= 0:
@@ -112,9 +120,20 @@ class DemoVault(gl.contract.Contract):
         if self.paused:
             return
         self.paused = True
+        self.restricted = True
         self.pause_count = self.pause_count + 1
         self.last_action = "paused"
         Paused(self.controller).emit()
+
+    @gl.public.write
+    def restrict(self) -> None:
+        if gl.message.sender_address != self.controller:
+            raise gl.vm.UserError("only the bound controller may restrict")
+        if self.restricted:
+            return
+        self.restricted = True
+        self.last_action = "restricted"
+        Restricted(self.controller).emit()
 
     # ---- governance surface (owner = DemoGovernor) ----------------------
     def _only_owner(self) -> None:
@@ -162,6 +181,7 @@ class DemoVault(gl.contract.Contract):
             "controller": str(self.controller),
             "owner": str(self.owner),
             "paused": self.paused,
+            "restricted": self.restricted,
             "fee_bps": int(self.fee_bps),
             "balance": int(self.balance),
             "total_deposits": int(self.total_deposits),

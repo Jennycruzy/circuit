@@ -176,7 +176,7 @@ def test_vault_privileged_surface_is_owner_only(direct_vm, world):
         world["vault"].set_fee_bps(5)
     with direct_vm.prank(world["alice"]), direct_vm.expect_revert("owner"):
         world["vault"].set_owner(address_text(world["alice"]))
-    assert world["vault"].privileged_methods() == ["set_owner", "set_fee_bps", "sweep", "pause"]
+    assert world["vault"].privileged_methods() == ["set_owner", "set_fee_bps", "sweep", "pause", "restrict"]
 
 
 def test_cross_contract_view_reads_live_vault_state(chain, world):

@@ -46,6 +46,11 @@ def world(chain, direct_vm, direct_deploy, direct_owner, direct_alice, direct_bo
     gov.grant_power(address_text(direct_alice), 70)
     gov.grant_power(address_text(direct_bob), 30)
     vault.set_owner(gov.address)
+    for who in (direct_alice, direct_bob, direct_owner, create_address("anyone")):
+        direct_vm.sender = who
+        direct_vm.value = 10_000_000_000_000_000
+        circuit.post_bond()
+    direct_vm.value = 0
     direct_vm.warp(at(30))
     return dict(vault=vault, gov=gov, circuit=circuit, alice=direct_alice, bob=direct_bob, owner=direct_owner)
 
@@ -118,6 +123,7 @@ def test_low_turnout_hostile_is_vetoed_even_with_matching_description(chain, dir
     world["gov"].grant_power(address_text(whale), 10)  # 10 / 110 ≈ 9 % of power
     pid = propose(direct_vm, world, "sweep", address_text(whale), description="Sweep vault funds to 0x" + address_text(whale)[2:], proposer=whale, voters=[whale])
     direct_vm.mock_llm(r"Sweep vault funds", judgment(True, True, 88))
+    direct_vm.sender = world["alice"]
     assert world["circuit"].assess_proposal(pid) == "VETO"
     a = world["circuit"].latest_assessment(pid)
     assert a["turnout_bps"] < 2000 and "turnout" in a["gate_reason"]
@@ -145,6 +151,7 @@ def test_settled_proposal_is_no_action(chain, direct_vm, world):
     direct_vm.sender = world["circuit"].addr
     world["gov"].veto(pid)
     direct_vm.mock_llm(r"Adjust fee", judgment(True, False, 99))
+    direct_vm.sender = world["alice"]
     assert world["circuit"].assess_proposal(pid) == "NO_ACTION"
     assert "VETOED" in world["circuit"].latest_assessment(pid)["gate_reason"]
 
