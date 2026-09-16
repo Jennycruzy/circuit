@@ -53,6 +53,20 @@ async function waitFinalized(c, hash) {
   return c.waitForFinalization({ hash, retries: 300, interval: 3000 });
 }
 
+// JSON args cannot carry bytes; {"$bytes":"0x..."} (any depth) becomes a Uint8Array.
+function parseArgs(json) {
+  if (!json) return [];
+  const conv = (v) => {
+    if (Array.isArray(v)) return v.map(conv);
+    if (v && typeof v === "object") {
+      if (typeof v.$bytes === "string") return Uint8Array.from(Buffer.from(v.$bytes.replace(/^0x/, ""), "hex"));
+      return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, conv(x)]));
+    }
+    return v;
+  };
+  return conv(JSON.parse(json));
+}
+
 function requireSuccessful(tx) {
   if (!isSuccessful(tx)) {
     const result = tx.txExecutionResultName || tx.result_name || tx.txExecutionResult || "unknown";
@@ -73,4 +87,4 @@ function summarize(tx) {
   };
 }
 
-module.exports = { client, publicClient, feesFor, feesForWrite, waitDecided, waitFinalized, requireSuccessful, summarize, studioDevnet, isSuccessful };
+module.exports = { parseArgs, client, publicClient, feesFor, feesForWrite, waitDecided, waitFinalized, requireSuccessful, summarize, studioDevnet, isSuccessful };

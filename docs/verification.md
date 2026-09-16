@@ -381,3 +381,52 @@ Conclusions:
 4. The message fee budget for a message-producing branch must be estimated
    with `estimateTransactionFeesForWrite` (messageFees `120000000000010352`
    consumed here); `scripts/write.cjs` already does this.
+
+## Addendum A §A2.7 — governance-path blockers — 2026-09-16 19:45–20:05 UTC
+
+Probe: `spikes/gov_probe.py`, deployed at
+**`0xf4c67DA52A2e460E723105bE73fc703438B01c21`** (tx
+`0xe52c1a6ae37ea56db4ff2e7002819fea337fda6b8197bda7fbd7094009a2bab1`).
+All read checks are live `gen_call` results via `scripts/read.cjs`; the write
+check is a finalized transaction.
+
+- [x] **Calldata decoding inside GenVM.** `env()` on-chain:
+  `eth_abi`, `eth_utils`, `web3` → `ModuleNotFoundError`. Available:
+  `genlayer.calldata` (GenVM native codec), `genlayer.evm.calldata`
+  (ABI codec with `selector_of`/`MethodEncoder`), `hashlib`, `json`, `re`,
+  `base64`, `datetime`. `Keccak256(b"pause()")[:4]` = `8456cb59` — the real
+  EVM selector, computed in-VM. **Decision:** on Studio Next the governor's
+  targets are Intelligent Contracts, so a proposal's calldata *is* GenVM
+  calldata (`{'': method, 'args': [...]}`), the same bytes the message
+  system itself carries (receipt `messages[0].data` = `0e002c7061757365` =
+  `pause`, byte-identical to `genlayer_py.abi.calldata.encode` off-chain).
+  Circuit decodes it with `gl.calldata.decode` — a real in-VM decode, no
+  hand-rolled selector map needed. `decode_calldata(bytes)` returned
+  `{method: "set_owner", args: ["0x1111…"], types: ["Address"]}` for a
+  proposer-built blob, and a clean `DecodingError: unexpected end of memory`
+  for `0xdeadbeef` (so "undecodable" is a first-class, reportable state).
+  "Unknown selector" becomes "method not in the target's registered
+  interface", which Circuit reports explicitly.
+- [x] **Reading another contract's state from an Intelligent Contract.**
+  `gl.contract.get_at(Address(x)).view().get_state()` executed inside a view
+  returned the live DemoVault dict (`paused: true, controller: 0x7C01…`).
+  Syntax confirmed from the v0.3 SDK source: `Proxy.view(state=, catch_vm_error=)`
+  then `__getattr__(method)(*args)`; dynamic method names therefore work
+  (`getattr(proxy.view(), name)(*args)`), and likewise for `emit()`.
+- [x] **Struct/array returns.** `shapes()` returned `list[str]` of addresses,
+  `list[bytes]` (rendered `0x…` by genlayer-js), `list[dict]`, and a 200-bit
+  int (as a decimal string) without loss. A `bytes` *argument* round-trips
+  from genlayer-js as `Uint8Array` (`scripts/gl.cjs parseArgs`, marker
+  `{"$bytes": "0x…"}`). DemoGovernor getters will return plain dicts/lists.
+- [x] **Two targets from one contract.** `emit_two(A, B)` tx
+  `0x2b0c395510897ab4c1c6f4e33712af521b9a29107394d374dc09135b58a4e5ab`
+  (finalized 35.8 s) produced two `messages` and two
+  `triggered_transactions` (`0x1e713871…6d04`, `0x22081f6b…2f38`); both
+  vaults `0x1Fd8020B…8173` and `0x7F74cb25…c3aa` read `paused: true,
+  pause_count: 1`. One Intelligent Contract can control both DemoVault and
+  DemoGovernor.
+
+Not fatal, but noted: `emit(on="finalized")` is the only phase used so far;
+`on="decided"` is documented and would cut ~30 s off ACT latency at the cost of
+acting before the appeal window closes. Decision deferred to the equivalence
+iteration (`docs/equivalence.md`).

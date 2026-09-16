@@ -17,7 +17,25 @@
   `0xdd623724…4765` MAJORITY_AGREE. Deploy/write/read scripts on
   genlayer-js 2.0.0-rc.1 in `scripts/`.
 
-## Current status (2026-09-16 14:35 UTC)
+- 2026-09-16 19:31: **Spike 3 (Studio form) PROVEN.** `emit_pause` parent
+  `0x3299…25f8` → child `0x2421…870c` (`triggered_on: finalized`) paused
+  DemoVault `0x9Be50f5A…91CF`; ~32 s parent→child. Evidence in verification log.
+- 2026-09-16 20:05: **Addendum §A2.7 blockers all resolved live** with
+  `spikes/gov_probe.py` (`0xf4c67DA5…1c21`): in-VM calldata decode
+  (`gl.calldata`), cross-contract reads (`get_at().view()`), list/dict/bytes
+  return shapes, and two message targets in one tx. See verification log.
+
+## Current status (2026-09-16 20:05 UTC)
+- Addendum A received. Order of work now follows §A4. Steps 1–5 of §A4 are
+  done except DemoGovernor itself (next). The governance path has no web
+  inputs, so it does not depend on spike 2; if spike 2 fails it is the primary
+  path (§A2.6).
+- **Design decision (Studio):** DemoGovernor is an Intelligent Contract whose
+  proposals carry `target` + raw GenVM calldata bytes + description. Circuit
+  decodes the bytes with `gl.calldata.decode`, checks the method against the
+  target's registered privileged interface, and compares it with the stated
+  description. Veto and pause both go out as `emit(on="finalized")` messages.
+
 - `contracts/demo_vault.py` is deployed on Studio Next at
   `0xa0d10d68050f1f3f993ca99D3E150F95371886eB` (tx
   `0x3e47c0835891728daac2ad11bf438dfaf4c3045cb77a88ebff0ff6fc60eacfb1`).
@@ -41,21 +59,20 @@
 - Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- Deploy a fresh vault and corrected pause probe, bind them, and execute the
-  IC-to-IC pause message. Inspect the parent and child transaction receipts
-  before claiming that the pause path works.
+- DemoGovernor contract + direct tests (veto only by Circuit address; execute
+  reverts when vetoed; governor controls DemoVault ownership/parameters).
+- Deploy DemoVault + DemoGovernor; prove Ghost-equivalent `veto()` live.
 - Full consensus spike: live changing page + enum verdict + confidence
   tolerance, run ≥10 times; record agree/disagree rate.
 - Ghost→pause() spike — Bradbury only.
 - Start the replay corpus (`bench/`).
 
 ## Blocked
-- The recorded EVM target is absent, and Studio does not implement calls to
-  EVM contracts beyond value transfers. The Solidity/Ghost path cannot be
-  claimed from the current deployment.
-- The Circuit contract, frontend, and replay benchmark have not been created
-  yet. The vault control path has direct tests, but its live IC-to-IC action is
-  still unproven.
+- Studio does not implement calls to EVM contracts. The Solidity/Ghost path is
+  replaced by the proven IC-to-IC message path; a Bradbury port would swap the
+  proxy type only.
+- The Circuit contract, DemoGovernor, frontend, and replay benchmark have not
+  been created yet.
 
 ## Findings that shape the design
 - Committees are heterogeneous (gpt-5.4, gemini, gemma, qwen, mistral, sonnet,
@@ -83,15 +100,17 @@
 2. **§5.2 step 5 ACT is not instantaneous.** IC messages are emitted only on
    `finalized`. The pause lands after the appeal window closes. Latency is to be
    measured and stated honestly in README.
-3. **§3.3 spike 3 cannot run on Studio.** EVM contract calls are unimplemented in
-   Studio; Bradbury only.
+3. **§3.3 spike 3 cannot run on Studio in its EVM form.** Run in IC-to-IC form
+   instead and proven 2026-09-16 19:31 (see verification log).
 4. **§3.2 "Skills plugin one-command path".** The plugin is skill docs wrapping
    the CLI, not a deploy tool. CLI is the path.
 5. **Cross-contract reference API.** The current public messages page shows
    `gl.get_contract_at`, but the deployed v0.3.0 runtime has no such attribute.
    A real simulation failed with that exact runtime error. The source now uses
-   `gl.contract.get_at`; this must be re-run live before it is treated as
-   proven.
+   `gl.contract.get_at`; re-run live and proven.
+6. **Addendum §A2.3 "Solidity governor".** Written as an Intelligent Contract on
+   Studio; proposal calldata is GenVM calldata, not EVM ABI. The description-vs-
+   calldata mismatch signal is unchanged.
 
 ## Audit review — 2026-09-16 14:35 UTC
 - The Studio account was funded with `sim_fundAccount`; no Bradbury GEN was

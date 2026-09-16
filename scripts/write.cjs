@@ -1,10 +1,10 @@
 // node scripts/write.cjs <address> <method> [json-args] [value-wei]
-const { client, feesForWrite, waitFinalized, requireSuccessful, summarize } = require("./gl.cjs");
+const { client, parseArgs, feesForWrite, waitFinalized, requireSuccessful, summarize } = require("./gl.cjs");
 (async () => {
   const [address, functionName, argsJson, valueWei] = process.argv.slice(2);
   if (!address || !functionName) throw new Error("usage: write.cjs <address> <method> [json-args] [value-wei]");
   const { client: c, account } = client();
-  const args = argsJson ? JSON.parse(argsJson) : [];
+  const args = parseArgs(argsJson);
   const value = valueWei ? BigInt(valueWei) : undefined;
   const fees = await feesForWrite(c, { account, address, functionName, args, value });
   const t0 = Date.now();
