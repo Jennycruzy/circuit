@@ -1,16 +1,18 @@
 // node scripts/write.cjs <address> <method> [json-args] [value-wei]
-const { client, feesFor, waitDecided, summarize } = require("./gl.cjs");
+const { client, feesForWrite, waitFinalized, requireSuccessful, summarize } = require("./gl.cjs");
 (async () => {
   const [address, functionName, argsJson, valueWei] = process.argv.slice(2);
   if (!address || !functionName) throw new Error("usage: write.cjs <address> <method> [json-args] [value-wei]");
-  const { client: c } = client();
+  const { client: c, account } = client();
   const args = argsJson ? JSON.parse(argsJson) : [];
-  const fees = await feesFor(c);
+  const value = valueWei ? BigInt(valueWei) : undefined;
+  const fees = await feesForWrite(c, { account, address, functionName, args, value });
   const t0 = Date.now();
-  const hash = await c.writeContract({ address, functionName, args, value: valueWei ? BigInt(valueWei) : undefined, fees });
+  const hash = await c.writeContract({ account, address, functionName, args, value, fees });
   console.log("tx", hash);
-  const tx = await waitDecided(c, hash);
-  console.log("decided in", ((Date.now() - t0) / 1000).toFixed(1), "s", JSON.stringify(summarize(tx)));
+  const tx = await waitFinalized(c, hash);
+  console.log("finalized in", ((Date.now() - t0) / 1000).toFixed(1), "s", JSON.stringify(summarize(tx)));
+  requireSuccessful(tx);
   const lr = tx.consensus_data?.leader_receipt; const L = Array.isArray(lr) ? lr[0] : lr;
   if (L?.genvm_result?.stdout) console.log("leader stdout:", L.genvm_result.stdout.trim());
   if (L?.genvm_result?.stderr) console.log("leader stderr:", L.genvm_result.stderr.trim().slice(0, 2000));

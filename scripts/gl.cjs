@@ -29,13 +29,35 @@ function client() {
   return { client: c, account };
 }
 
+function publicClient() {
+  const c = createClient({ chain: studioDevnet });
+  return { client: c };
+}
+
 async function feesFor(c, opts = {}) {
   const est = await c.estimateTransactionFees(opts);
   return { distribution: est.distribution, messageAllocations: est.messageAllocations, feeValue: est.feeValue, policy: est.policy };
 }
 
+async function feesForWrite(c, request) {
+  const est = await c.estimateTransactionFeesForWrite(request);
+  return { distribution: est.distribution, messageAllocations: est.messageAllocations, feeValue: est.feeValue, policy: est.policy };
+}
+
 async function waitDecided(c, hash) {
   const tx = await c.waitForTransactionReceipt({ hash, waitUntil: "decided", retries: 300, interval: 3000 });
+  return tx;
+}
+
+async function waitFinalized(c, hash) {
+  return c.waitForFinalization({ hash, retries: 300, interval: 3000 });
+}
+
+function requireSuccessful(tx) {
+  if (!isSuccessful(tx)) {
+    const result = tx.txExecutionResultName || tx.result_name || tx.txExecutionResult || "unknown";
+    throw new Error(`transaction execution did not finish successfully: ${result}`);
+  }
   return tx;
 }
 
@@ -51,4 +73,4 @@ function summarize(tx) {
   };
 }
 
-module.exports = { client, feesFor, waitDecided, summarize, studioDevnet, isSuccessful };
+module.exports = { client, publicClient, feesFor, feesForWrite, waitDecided, waitFinalized, requireSuccessful, summarize, studioDevnet, isSuccessful };
