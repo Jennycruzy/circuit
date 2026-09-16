@@ -1,0 +1,8 @@
+node_modules/
+.gltest_cache/
+__pycache__/
+*.pyc
+.env
+*.keystore.json
+frontend/.next/
+frontend/out/
