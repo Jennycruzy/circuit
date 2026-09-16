@@ -338,3 +338,46 @@ It does not convert pending or missing network state into a result.
 - The direct contract suite passes 6 tests. `genvm-lint` passes its 3 static
   checks for each contract; its validation step cannot load the pinned v0.3.0
   runner archive in this environment.
+
+## Spike 3 (Studio form): IC→IC control message — 2026-09-16 19:29–19:31 UTC
+
+Studio Next has no EVM/Ghost path, so the main-spec §3.3 spike 3 is run in its
+Studio-equivalent form: one Intelligent Contract emitting a write message to
+another. This is the mechanism both `pause()` and `veto()` depend on.
+
+Executed, all finalized, all `MAJORITY_AGREE`:
+- Fresh DemoVault deploy `0x8c3f79e8aae8eb36a1e87f71bc823e0a436b1827c346ac7b9f58f6a66b88f454`
+  → **`0x9Be50f5A958cF2807bbe51a3c99790466acd91CF`** (36.2 s).
+- Corrected probe (`gl.contract.get_at(...).emit(on="finalized").pause()`)
+  deploy `0xcbcbb0d41ab429752be01aef1ae63d8552e6d3d5196eee8fbe93eb84ad6535cd`
+  → **`0x7C01caF67D90dE13C5512c8099DA4CF31452dF08`** (37.6 s).
+- `set_controller(probe)` finalized (validators gpt-5.4, mistral, deepseek agree).
+- `emit_pause()` parent tx
+  **`0x329936492ee6e5a543370706eeacce96b738fe4a0a53398d0b8a51333eaa25f8`**,
+  created 19:30:23 UTC, finalized in 35.8 s, `FINISHED_WITH_RETURN`.
+  Receipt `messages[0]` = `{recipient: vault, data: "DgAscGF1c2U=" (= calldata
+  `pause`), onAcceptance: false}`; `triggered_transactions` =
+  [`0x2421ab04e89e48bbb6dd9848b6a9c3311bd5e12a300cd9f96db3351a06f1870c`].
+- Child tx `0x2421ab04…870c`: `from` = probe, `to` = vault,
+  `triggered_by` = parent, `triggered_on: "finalized"`, created 19:30:55 UTC
+  (**32 s after the parent was submitted**), `FINISHED_WITH_RETURN`,
+  `MAJORITY_AGREE`.
+- Vault `get_state()` afterwards:
+  `{paused: true, pause_count: 1, last_action: "paused", controller: probe}`.
+  Probe `get_state()`: `{emitted: true}`.
+
+Conclusions:
+1. **PROVEN.** An Intelligent Contract can change another Intelligent
+   Contract's state through `gl.contract.get_at(addr).emit(on="finalized").method()`.
+   The sender seen by the callee is the emitting contract's address, so the
+   callee's `controller`/`circuit` authorisation check works as designed.
+2. The message is delivered only on finality of the parent. Measured
+   parent-submit → child-created latency: ~32 s on Studio Next (parent
+   finalization ~36 s on this network with 0 appeal rounds). This is the
+   "ACT is not instantaneous" cost from divergence 2, now with a number.
+3. `gl.get_contract_at` (as printed on the public messages page) does not
+   exist in the v0.3.0 runtime; `gl.contract.get_at` does. Confirmed by the
+   earlier failed simulation and this successful execution.
+4. The message fee budget for a message-producing branch must be estimated
+   with `estimateTransactionFeesForWrite` (messageFees `120000000000010352`
+   consumed here); `scripts/write.cjs` already does this.
