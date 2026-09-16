@@ -462,3 +462,26 @@ Hostile proposal #0: target = vault, calldata
 `0x16004c…dead` = `set_owner(0x…dEaD)`, description "Adjust fee parameter".
 `propose` tx `0x7a1a27d8…42ed`, `vote(0, true)` tx `0xe8d22ec0…4f11` →
 `for_votes 100`, `state ACTIVE`, `voting_ends 1789588889`.
+
+### Veto from a contract, and execute-after-veto — 2026-09-16 20:02–20:06 UTC
+
+- The first `queue(0)` attempt was refused at fee estimation (`execution
+  failed`): the estimator's simulated datetime lagged the real clock and hit
+  `voting still open`. `scripts/write.cjs --force` now bypasses the
+  simulating estimator (generic fee quote) so that a call expected to revert
+  is still submitted and its failure is on-chain evidence.
+- **Veto (A4 step 5) PROVEN.** Probe `emit_veto(governor, 0)` parent tx
+  `0x7266dc7d333a704270bba30b4ef0ea0c24a7382574e0e0cd407ddb1a24b1b01f`
+  (finalized 36.2 s) → child
+  `0x405b5039449101c4cc6e3006f27eeceb95deed116d8e44f9dcff36ee24a188ad`
+  → proposal 0 `state: VETOED`. The governor's `only circuit may veto`
+  check passed because the message sender is the bound contract address.
+- **Execute after veto reverts on-chain.** `execute(0)` tx
+  `0xf3949f43739e2c3238a64a133830ccd6504abfd6658f53a25dc823d16e758253`,
+  `FINISHED_WITH_ERROR`, leader result = user error `proposal was vetoed`,
+  `messages: []`, no child transactions. Vault `0x9804c962…B570` still reads
+  `owner: 0x16C1958C…fA6e` (the governor), `fee_bps: 0`. The hostile
+  `set_owner(0x…dEaD)` never reached the vault.
+- Benign proposal #1 (`set_fee_bps(30)`, "Set protocol fee to 0.30% (30
+  bps)"): `propose` tx `0x34a803b7…4d08`, `vote(1,true)` tx `0x1a2b6984…1fe7`;
+  queue/execute recorded below when the windows elapse.

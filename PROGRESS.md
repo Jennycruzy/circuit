@@ -25,7 +25,13 @@
   (`gl.calldata`), cross-contract reads (`get_at().view()`), list/dict/bytes
   return shapes, and two message targets in one tx. See verification log.
 
-## Current status (2026-09-16 20:05 UTC)
+- 2026-09-16 20:06: **DemoGovernor live; veto path PROVEN (A4 step 5).**
+  Governor `0x16C1958C…fA6e`, vault `0x9804c962…B570` (owner = governor).
+  Hostile proposal 0 (`set_owner(0x…dEaD)` described as "Adjust fee
+  parameter") vetoed by a contract message (child `0x405b5039…88ad`);
+  `execute(0)` reverted on-chain with `proposal was vetoed`. 18 direct tests.
+
+## Current status (2026-09-16 20:06 UTC)
 - Addendum A received. Order of work now follows §A4. Steps 1–5 of §A4 are
   done except DemoGovernor itself (next). The governance path has no web
   inputs, so it does not depend on spike 2; if spike 2 fails it is the primary
@@ -59,9 +65,11 @@
 - Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- DemoGovernor contract + direct tests (veto only by Circuit address; execute
-  reverts when vetoed; governor controls DemoVault ownership/parameters).
-- Deploy DemoVault + DemoGovernor; prove Ghost-equivalent `veto()` live.
+- Benign proposal 1 lifecycle live (queue → execute → `fee_bps` = 30).
+- Circuit contract: `assess_proposal` (§A2.4) — READ/DECODE/CONTEXT
+  deterministic, JUDGE via `run_nondet_default` with enum verdict + bounded
+  confidence compared by validators, GATE, ACT (`emit veto`), RECORD.
+- Circuit contract: `assess` (drain path) per main-spec §5.2.
 - Full consensus spike: live changing page + enum verdict + confidence
   tolerance, run ≥10 times; record agree/disagree rate.
 - Ghost→pause() spike — Bradbury only.
