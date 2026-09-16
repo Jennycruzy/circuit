@@ -12,7 +12,7 @@ GenLayer Intelligent Contract. It has two detection surfaces:
    token moves. *(complete, proven live)*
 2. **Drain detection** — measures on-chain outflow against a watched vault,
    weighs external evidence, and pauses on a real attack while refusing to be
-   triggered by panic alone. *(in progress; the control path is proven)*
+   triggered by panic alone. *(complete, proven live)*
 
 Live on GenLayer **Studio Next** (chain 61997). Every claim below links to a
 transaction in [`docs/verification.md`](docs/verification.md).
@@ -73,20 +73,40 @@ compared. See [`docs/equivalence.md`](docs/equivalence.md).
 Four model families, two proposals, zero disagreements on the decision
 fields. Two is a demonstration, not a benchmark — see below.
 
-## The drain module (in progress)
+## The drain module
 
-The Intelligent-Contract → vault `pause()` message path is proven (parent →
-child in ~32 s after finality). The assessment path itself — measure, fetch
-evidence, judge, gate — is next. Its rule from day one: **a detector that can
-be triggered by a tweet is a denial-of-service weapon, not a security tool.**
-On-chain measurement is primary; text is evidence, never a trigger.
+```
+MEASURE  vault balance and withdrawals since the window start → outflow bps   deterministic
+GATHER   fetch every evidence source; a failure is recorded, never substituted  non-det
+JUDGE    corroboration (STRONG?), exploit probability, cited fact, reasoning    LLM, consensus
+GATE     below threshold → NO_ACTION (ELEVATED if strong web signal)            deterministic
+         above threshold → RESTRICT (probability < 80) or PAUSE (≥ 80)
+         every source failed → capped at RESTRICT
+ACT      Circuit → DemoVault.restrict() / pause()                                deterministic
+RECORD   full receipt, always; NO_ACTION slashes half the caller's bond
+```
+
+**A detector that can be triggered by a tweet is a denial-of-service weapon,
+not a security tool.** On-chain measurement is primary; text is evidence,
+never a trigger. Text alone cannot reach RESTRICT or PAUSE by construction.
+
+### What happened on the live network (2026-09-16)
+
+| beat | measured | evidence | committee | verdict |
+|---|---|---|---|---|
+| refusal | 0 % outflow, healthy | a live page screaming "DEMOVAULT IS BEING DRAINED" + the DefiLlama hacks feed | leader 4, gpt-5.4 2, claude-sonnet 3 | **NO_ACTION** — bond slashed, nothing touched |
+| drain | a second wallet withdrew **50 %** in two real transactions | same sources | leader deepseek 85, claude-sonnet 95, deepseek 95 | **PAUSE** — child tx paused the vault, 119 s after the trigger |
+
+The first live attempt failed consensus for four rounds with every node
+saying `NO_ACTION` — on a side field, not the verdict. That failure, why it
+happened, and the fix are in [`docs/equivalence.md`](docs/equivalence.md).
 
 ### Honest bounding
 
 Some drains are unwinnable at any response speed. Replaying Circuit's
-measured response latency against Decurity's ten reconstructed drain
-timelines (`bench/replay.py --latency-s 80`, placed conservatively at the
-5-minute mark):
+measured trigger-to-pause latency (119 s on Studio Next) against Decurity's
+ten reconstructed drain timelines (`bench/replay.py --latency-s 120`, placed
+conservatively at the 5-minute mark):
 
 - 7/10 cases still had a majority of at-risk funds on the contract —
   Nomad (8% gone), Euler (4%), Sonne (15%), Curve (16%), Foom, Squid, Rhea.
@@ -105,10 +125,12 @@ Source: Decurity Research, https://rescue-window.decurity.io.
 | `contracts/demo_governor.py` | minimal timelocked governor; `veto()` callable only by the bound Circuit address; `execute()` reverts when vetoed |
 | `contracts/demo_vault.py` | the protected protocol; governor is `owner` (params, ownership, sweep), Circuit is `controller` (pause) |
 
-Live set: vault `0x93A35A1a192E2A67e0816d178D8b14ed96590977` ·
-governor `0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574` ·
-Circuit `0x7Fc4784365a6c209753ae35740a89e03bd45a984` ·
-explorer https://explorer-studio-dev.genlayer.com.
+Live set (drain beats): vault `0x8E30363F60cc25dD98974523C3ed8b491995EdE8` ·
+governor `0xe999Ec1E22D008aB09975317385A65E4A0a4D454` ·
+Circuit `0xdd09958f03781a558c7b449f9d4eE277a9CD1E20`.
+Governance beats were run on the previous set: vault `0x93A35A1a…0977`,
+governor `0xad2dd244…5574`, Circuit `0x7Fc47843…a984`.
+Explorer: https://explorer-studio-dev.genlayer.com.
 
 The demo governor's windows are 180 s voting / 300 s timelock so a demo fits
 in minutes. Production windows are hours to days, which only widens Circuit's
@@ -121,8 +143,10 @@ export PATH=$HOME/.nvm/versions/node/v24.21.0/bin:$PATH
 npm test                                  # 27 direct-mode contract tests
 npm run serve:web                         # governance watch UI on :8080
 node scripts/read.cjs  <addr> get_proposals
-node scripts/write.cjs <addr> assess_proposal '[0]'
-python3 bench/replay.py --latency-s 80
+node scripts/write.cjs <circuit> post_bond '[]' 20000000000000000
+node scripts/write.cjs <circuit> assess '["demovault"]'
+node scripts/write.cjs <circuit> assess_proposal '[0]'
+python3 bench/replay.py --latency-s 120
 ```
 
 Network scripts use `genlayer-js 2.0.0-rc.1` directly (the CLI cannot submit

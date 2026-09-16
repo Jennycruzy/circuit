@@ -44,7 +44,13 @@
   killing the tx; ~49 s finality for a 4-fetch/3-LLM transaction. Web evidence
   stays in the drain path (§A4 step 4 decision). Evidence in verification log.
 
-## Current status (2026-09-16 21:36 UTC)
+- 2026-09-16 22:12: **Drain path complete end to end, live.** Refusal beat
+  (`NO_ACTION`, panic page fetched, bond slashed) and detection beat (real
+  50 % drain from a second wallet → `PAUSE` → child pause landed, 119 s
+  trigger→pause). First equivalence failure observed and fixed (v2: compare
+  gate inputs only). Set 5 addresses in verification log. 39 direct tests.
+
+## Current status (2026-09-16 22:12 UTC)
 - Live demo set: vault `0x93A35A1a192E2A67e0816d178D8b14ed96590977`,
   governor `0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574`, Circuit
   `0x7Fc4784365a6c209753ae35740a89e03bd45a984`. Circuit is also the vault's
@@ -89,8 +95,10 @@
 - Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- Circuit `assess` (drain path) per main-spec §5.2, then the real drain and
-  the drain-side frontend surface.
+- Governance beats 2–3 on set 5 (the governor there has not yet seen a
+  proposal); sets 3 and 5 both stay in the README as evidence.
+- Frontend: drain surface written (`web/`), not yet viewed in a browser;
+  the trigger button (§7.2) requires a wallet flow — not built.
 - Grow `bench/governance_corpus.json` past its 2-entry seed (benign DAO
   proposals + known malicious ones) and measure the false-veto rate.
 - Open the UI in a browser (`npm run serve:web`) and check the side-by-side.

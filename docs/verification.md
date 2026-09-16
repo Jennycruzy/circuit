@@ -605,3 +605,62 @@ Answers:
 6. Note on caching: `hnrss.org` returned byte-identical bodies to all nodes
    within a transaction (cached upstream); it is a weaker stress test than
    run 6 and is reported as such.
+
+## Drain path live — 2026-09-16 21:45–22:12 UTC
+
+### Set 4 and the first equivalence failure (kept as evidence)
+Vault `0x362c59f9…c325`, governor `0xaaB24764…8772`, Circuit `0x6436665F…6645`,
+protocol `demovault` registered (threshold 2000 bps, window 600 s, sources:
+`api.llama.fi/hacks` + the repo-hosted panic page), vault funded with a real
+0.05 GEN deposit (`0xf686c0c8…e4b4`), deployer bond 0.02 GEN (`0xa373da61…84af`).
+Second wallet `0x554E5315…a1ED` created and funded via `sim_fundAccount`.
+
+`assess("demovault")` tx `0x54fd7c166c464e1732acbf400d914aee54fec4a3c601f32d5cbe5dc5e9ac8ad1`
+(21:51 UTC) — **`UNDETERMINED` after 4 leader rotations (deepseek, sonnet,
+gpt-5.4, gpt-5.4).** Every node in every round said `NO_ACTION`; the refusal
+was unanimous. Consensus failed on side fields: `corroboration` split
+NONE/WEAK on a page that claims an exploit the facts contradict, and
+`confidence` split 2–4 vs 96–100 because "confidence that an exploit is
+active" was read both ways. No record was written; the Studio RPC then
+returned 503 on both hostnames for ~5 minutes (21:52–21:57), unrelated.
+This is the §5.6 "committee cannot reach consensus" row, observed for real.
+Equivalence v2 (see `docs/equivalence.md`): compare exactly the gate inputs —
+`corroboration == STRONG`, `probability ≥ high` — plus the ±30 band; rename
+to `exploit_probability` with an unambiguous definition; the model's own
+verdict is recorded, never compared. Same threshold rule applied to the
+governance validator. 39 direct tests.
+
+### Set 5 (current): the four beats
+Vault **`0x8E30363F60cc25dD98974523C3ed8b491995EdE8`**, governor
+**`0xe999Ec1E22D008aB09975317385A65E4A0a4D454`**, Circuit
+**`0xdd09958f03781a558c7b449f9d4eE277a9CD1E20`** (high 80, turnout floor 20 %).
+Wiring `0xf1c58da7…9cf0`, `0xd13293e6…837e`, `0xcc5bd840…53f0`,
+`0xe54cbd3d…d84b`; deposit 0.05 GEN `0x3c8968eb…a7de`; bond 0.04 GEN
+`0xbe5de96a…0f8a`; `register_protocol` `0x7b96d894…fb04`.
+
+**Beat 1 — refusal.** Healthy vault, panic page live.
+`assess` tx **`0x98b556fda772fe9a0c7607ebbd615b0e7d988dd2f484663468ca8ab4b8a077dc`**,
+`MAJORITY_AGREE`, 1 round, 61.4 s. Leader: corroboration WEAK, `NO_ACTION`,
+exploit probability 4; validators gpt-5.4 (2) and claude-sonnet-4.6 (3)
+agree. Evidence recorded: hacks feed `UNRELATED`; panic page
+`EXPLOIT_CLAIM` with its excerpt. Gate: "outflow below threshold and no
+strong corroboration" → **NO_ACTION**, action none, **bond slashed 0.005
+GEN**. Reasoning cites `withdrawn_since_window_start: 0`.
+
+**Beat 4 — the drain.** Second wallet withdrew 0.015 + 0.010 GEN
+(`0x644a9080…7924`, `0x6b05104e…5e69`; last created 22:08:25) — 50 % of
+the window-start balance. `assess` tx
+**`0xac9e7f95115db1a8a10fb4eb614c7cdec8d92cd4c1f143c5f05136d52a7a1a05`**
+(created 22:09:29), `MAJORITY_AGREE`, 1 round; leader deepseek: STRONG,
+`PAUSE`, 85; validators claude-sonnet-4.6 (95) and deepseek (95) agree.
+Gate: "outflow above threshold at high confidence (85)" → **PAUSE**; child
+**`0xfe4945d8b76f9e505bd416e19430e4ac6a714be357221706a6a02e4801dcf0a3`**
+created 22:11:28 → vault `paused: true, restricted: true, pause_count: 1`.
+Reasoning cites the measured 50 % outflow first and the web excerpt as
+corroboration. No human in the loop.
+
+**Measured latency:** last drain tx 22:08:25 → pause landed 22:11:28 =
+**3 min 3 s**, of which ~64 s was the trigger being submitted by hand.
+Trigger submission → pause: **119 s** (assess finality ~60 s + child
+message ~32 s + queueing). `bench/replay.py --latency-s 120` is the honest
+figure; still inside the 5-minute mark.

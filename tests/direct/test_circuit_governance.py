@@ -173,8 +173,11 @@ def test_validator_compares_closed_fields_with_tolerance(direct_vm, world):
     world["circuit"].assess_proposal(pid)
 
     direct_vm.clear_mocks()
-    direct_vm.mock_llm(r"Adjust fee", judgment(True, False, 65, reasoning="totally different wording"))
-    assert direct_vm.run_validator() is True            # same decision, confidence within 30, reasoning ignored
+    direct_vm.mock_llm(r"Adjust fee", judgment(True, False, 82, reasoning="totally different wording"))
+    assert direct_vm.run_validator() is True            # same decision, same side of the high threshold, reasoning ignored
+    direct_vm.clear_mocks()
+    direct_vm.mock_llm(r"Adjust fee", judgment(True, False, 75))
+    assert direct_vm.run_validator() is False           # crosses the high threshold (80): the gate would differ
     direct_vm.clear_mocks()
     direct_vm.mock_llm(r"Adjust fee", judgment(True, False, 55))
     assert direct_vm.run_validator() is False           # confidence drift beyond tolerance

@@ -30,7 +30,7 @@ function decodeAction(target, hex) {
   }
 }
 
-let proposals = [], assessments = [], byProposal = new Map(), now = 0, gcfg = {};
+let proposals = [], assessments = [], drains = [], protocol = null, byProposal = new Map(), now = 0, gcfg = {};
 
 function verdictPill(pid) {
   const a = byProposal.get(pid);
@@ -101,24 +101,68 @@ function renderLog() {
   for (const tr of $("log").querySelectorAll("tr.row")) tr.onclick = () => renderDetail(Number(tr.dataset.pid));
 }
 
+const gen = (wei) => (Number(BigInt(wei)) / 1e18).toFixed(4) + " GEN";
+
 function renderVault(v) {
+  const p = protocol;
+  const outflow = p ? Math.max(0, Number(v.total_withdrawals) - Number(p.baseline_withdrawals)) : 0;
+  const bps = p && Number(p.baseline_balance) > 0 ? Math.floor(outflow * 10000 / Number(p.baseline_balance)) : 0;
+  const last = drains[drains.length - 1];
   $("vault").className = "kv";
   $("vault").innerHTML = [
-    ["contract", addrLink(cfg.vault)], ["paused", `<b class="${v.paused ? "err" : ""}">${v.paused}</b>`],
+    ["contract", addrLink(cfg.vault)],
+    ["paused", `<b class="${v.paused ? "err" : ""}">${v.paused}</b>`], ["restricted", `<b class="${v.restricted ? "err" : ""}">${v.restricted}</b>`],
+    ["balance", gen(v.balance)],
+    ["outflow this window", p ? `<b class="${bps >= Number(p.drain_threshold_bps) ? "err" : ""}">${(bps / 100).toFixed(1)}%</b> of ${gen(p.baseline_balance)} <span class="muted">(threshold ${(Number(p.drain_threshold_bps) / 100).toFixed(0)}%, window ${p.window_s}s)</span>` : "—"],
+    ["latest verdict", last ? `<span class="pill ${last.verdict}">${last.verdict}</span> <span class="muted">${ts(last.assessed_at)}</span>` : `<span class="pill NONE">none yet</span>`],
     ["owner (governance)", addrLink(v.owner)], ["controller (Circuit)", addrLink(v.controller)],
-    ["balance", v.balance], ["fee_bps", v.fee_bps], ["pause count", v.pause_count], ["last action", v.last_action],
+    ["fee_bps", v.fee_bps], ["pause count", v.pause_count], ["last action", v.last_action],
   ].map(([k, val]) => `<div><span>${k}</span>${val}</div>`).join("");
+}
+
+function renderDrains() {
+  $("drain").innerHTML = drains.length ? drains.slice().reverse().map((a) => `<tr class="row" data-idx="${a.index}"><td>${a.index}</td>
+    <td><span class="pill ${a.verdict}">${a.verdict}</span></td><td class="${a.drain_above_threshold ? "err" : ""}">${(Number(a.outflow_bps) / 100).toFixed(1)}%</td>
+    <td>${a.drain_above_threshold ? "above" : "below"}</td><td>${a.corroboration}</td><td class="muted">${a.model_verdict}</td><td>${a.confidence}</td>
+    <td>${a.sources_ok}/${a.sources_failed.length}${a.sources_failed.length ? ' <span class="err">failed</span>' : ""}</td><td>${a.action_taken}</td><td>${ts(a.assessed_at)}</td></tr>`).join("")
+    : `<tr><td colspan="10" class="muted">no assessments yet</td></tr>`;
+  for (const tr of $("drain").querySelectorAll("tr.row")) tr.onclick = () => renderDrainDetail(Number(tr.dataset.idx));
+}
+
+function renderDrainDetail(idx) {
+  const a = drains.find((x) => Number(x.index) === idx); if (!a) return;
+  const cls = a.verdict === "NO_ACTION" ? "ok" : a.verdict === "PAUSE" ? "bad" : "dim";
+  $("drain-detail").innerHTML = `<div class="banner ${cls}"><b>#${idx} ${a.verdict}</b> — ${esc(a.gate_reason)} · action: ${a.action_taken}${a.bond_slashed > 0 ? " · bond slashed " + gen(a.bond_slashed) : ""}</div>
+    <div class="side" style="margin-top:10px">
+      <div><div class="label">MEASURED on-chain (authoritative)</div><dl>
+        <dt>balance now</dt><dd>${gen(a.balance)}</dd><dt>balance at window start</dt><dd>${gen(a.baseline_balance)}</dd>
+        <dt>withdrawn since window start</dt><dd>${gen(a.outflow)} (${(Number(a.outflow_bps) / 100).toFixed(1)}%)</dd>
+        <dt>drain above threshold</dt><dd class="${a.drain_above_threshold ? "err" : ""}">${a.drain_above_threshold}</dd>
+        <dt>already paused</dt><dd>${a.already_paused}</dd>
+        <dt>assessed</dt><dd>${ts(a.assessed_at)} by ${addrLink(a.caller)}</dd></dl></div>
+      <div><div class="label">JUDGED by the committee</div><dl>
+        <dt>model verdict</dt><dd>${a.model_verdict} <span class="muted">(gate decided: ${a.verdict})</span></dd>
+        <dt>corroboration</dt><dd>${a.corroboration}</dd><dt>confidence</dt><dd>${a.confidence}/100 (high ≥ ${gcfg.high_confidence ?? "?"})</dd>
+        <dt>cited</dt><dd>${esc(a.cited)}</dd></dl>
+        <div class="label" style="margin-top:8px">reasoning (stored, not compared by validators)</div><div class="reason">${esc(a.reasoning)}</div></div>
+    </div>
+    <div class="label" style="margin-top:12px">EVIDENCE — exactly what the leader fetched (${a.sources_ok} ok, ${a.sources_failed.length} failed; failures shown, never hidden)</div>
+    <table><thead><tr><th>source</th><th>status</th><th>category</th><th>excerpt / error</th></tr></thead><tbody>
+      ${a.web_evidence.map((e) => `<tr class="${e.category === "SOURCE_FAILED" ? "err" : ""}"><td><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.url)}</a></td><td>${e.status}</td><td>${e.category}</td><td>${esc(e.excerpt || e.error || "")}</td></tr>`).join("")}
+    </tbody></table>`;
 }
 
 async function refresh() {
   try {
-    const [vault, ps, as, cc, gc] = await Promise.all([
+    const [vault, ps, as, cc, gc, ds, pr] = await Promise.all([
       read(cfg.vault, "get_state"), read(cfg.governor, "get_proposals"), read(cfg.circuit, "get_assessments"),
-      read(cfg.circuit, "get_config"), read(cfg.governor, "get_config"),
+      read(cfg.circuit, "get_config"), read(cfg.governor, "get_config"), read(cfg.circuit, "get_drain_assessments"),
+      cfg.protocol_id ? read(cfg.circuit, "get_protocol", [cfg.protocol_id]).catch(() => null) : null,
     ]);
-    proposals = ps; assessments = as; gcfg = cc; now = Number(gc.now);
+    proposals = ps; assessments = as; gcfg = cc; now = Number(gc.now); drains = ds; protocol = pr;
     byProposal = new Map(); for (const a of as) byProposal.set(Number(a.proposal_id), a);
-    renderVault(vault); renderProposals(); renderLog();
+    renderVault(vault); renderDrains(); renderProposals(); renderLog();
+    if (!document.querySelector("#drain-detail .banner") && drains.length) renderDrainDetail(Number(drains[drains.length - 1].index));
     $("net").textContent = `${cfg.network} · governor ${short(cfg.governor)} · circuit ${short(cfg.circuit)}`;
     $("updated").textContent = `updated ${new Date().toISOString().slice(11, 19)} UTC`;
     const sel = document.querySelector("#detail h2")?.textContent.match(/#(\d+)/);

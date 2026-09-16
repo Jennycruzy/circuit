@@ -24,7 +24,7 @@ def at(seconds: int) -> str:
 
 
 def judge(corr, verdict, conf, cited="fact", reasoning="because"):
-    return json.dumps({"corroboration": corr, "verdict": verdict, "confidence": conf, "cited": cited, "reasoning": reasoning}).encode()
+    return json.dumps({"corroboration": corr, "verdict": verdict, "exploit_probability": conf, "cited": cited, "reasoning": reasoning}).encode()
 
 
 def classify(cat, excerpt="…"):
@@ -174,7 +174,7 @@ def test_already_paused_records_without_duplicate_action(chain, direct_vm, world
 
 def test_llm_failure_leaves_no_record(direct_vm, world):
     mock_sources(direct_vm)
-    direct_vm.mock_llm(r"judgment step", b'{"corroboration": "MAYBE", "verdict": "PAUSE", "confidence": 90}')
+    direct_vm.mock_llm(r"judgment step", b'{"corroboration": "MAYBE", "verdict": "PAUSE", "exploit_probability": 90}')
     direct_vm.sender = world["alice"]
     with pytest.raises(Exception, match="LLM_ERROR"):
         world["circuit"].assess("demovault")
@@ -215,20 +215,28 @@ def test_baseline_rolls_once_per_window(direct_vm, world):
     assert p["baseline_balance"] == 900 and p["baseline_withdrawals"] == 100          # window elapsed: rolled forward
 
 
-def test_validator_compares_closed_fields_only(direct_vm, world):
+def test_validator_compares_gate_inputs_only(direct_vm, world):
     drain(direct_vm, world, 300)
     mock_sources(direct_vm, feed_cat="EXPLOIT_CLAIM")
     direct_vm.mock_llm(r"judgment step", judge("STRONG", "PAUSE", 90, reasoning="leader words"))
     direct_vm.sender = world["alice"]
     world["circuit"].assess("demovault")
-    direct_vm.clear_mocks(); mock_sources(direct_vm, feed_cat="EXPLOIT_CLAIM")
-    direct_vm.mock_llm(r"judgment step", judge("STRONG", "PAUSE", 65, reasoning="other words"))
-    assert direct_vm.run_validator() is True
-    direct_vm.clear_mocks(); mock_sources(direct_vm, feed_cat="EXPLOIT_CLAIM")
-    direct_vm.mock_llm(r"judgment step", judge("WEAK", "PAUSE", 90))
-    assert direct_vm.run_validator() is False
-    direct_vm.clear_mocks()
-    # a validator whose sources fail still compares the judgment, not reachability
-    direct_vm.mock_web(r"example", {"status": 503, "body": ""})
+
+    def validator_says(corr, verdict, conf):
+        direct_vm.clear_mocks(); mock_sources(direct_vm, feed_cat="EXPLOIT_CLAIM")
+        direct_vm.mock_llm(r"judgment step", judge(corr, verdict, conf, reasoning="other words"))
+        return direct_vm.run_validator()
+
+    assert validator_says("STRONG", "RESTRICT", 85) is True     # model verdict differs: not a gate input
+    assert validator_says("STRONG", "PAUSE", 79) is False        # crosses the high threshold (80)
+    assert validator_says("WEAK", "PAUSE", 90) is False          # STRONG vs not-STRONG
+    # a validator whose own sources fail still compares the judgment, not reachability
+    direct_vm.clear_mocks(); direct_vm.mock_web(r"example", {"status": 503, "body": ""})
     direct_vm.mock_llm(r"judgment step", judge("STRONG", "PAUSE", 88))
     assert direct_vm.run_validator() is True
+    # the live failure shape: leader 2 vs validator 97 must never pass, NONE vs WEAK must
+    direct_vm.clear_mocks(); mock_sources(direct_vm)
+    direct_vm.mock_llm(r"judgment step", judge("NONE", "NO_ACTION", 2))
+    world["circuit"].assess("demovault")
+    assert validator_says("WEAK", "NO_ACTION", 4) is True
+    assert validator_says("WEAK", "NO_ACTION", 97) is False
