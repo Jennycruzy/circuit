@@ -43,8 +43,11 @@
   governor `0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574`, Circuit
   `0x7Fc4784365a6c209753ae35740a89e03bd45a984`. Circuit is also the vault's
   `controller` (pause authority) — the drain path can bind to this set.
-- §A4 steps 1–5 and 7 done. Step 6 (`assess`, drain path, main-spec §5.2)
-  needs the main spec text in-session; not started. Steps 8–12 not started.
+- §A4 steps 1–5, 7, 8 (governance half), 9 (governance surfaces), 10 (drain
+  corpus + governance seed), and the README of 12 are done. Step 6 (`assess`,
+  drain path, main-spec §5.2) needs the main spec text in-session; not
+  started. Step 11's real drain depends on 6. Frontend (`web/`) is built and
+  its reads verified from Node, not yet viewed in a browser (none here).
 
 ## Superseded status (2026-09-16 20:06 UTC)
 - Addendum A received. Order of work now follows §A4. Steps 1–5 of §A4 are
@@ -81,14 +84,15 @@
 
 ## Next
 - Circuit `assess` (drain path) per main-spec §5.2 — paste the main spec.
-- `docs/equivalence.md` (both paths); governance-side observations already in
-  the verification log.
-- Frontend (§A5): governance watch + side-by-side + proposal detail; reads via
-  genlayer-js `readContract` on the three live addresses.
-- Replay benchmark (§A3): Decurity rescue-window cases + governance corpus;
-  false-veto rate.
+  Then spike 2 (web-content consensus), the real drain, and the drain-side
+  frontend surface.
+- Grow `bench/governance_corpus.json` past its 2-entry seed (benign DAO
+  proposals + known malicious ones) and measure the false-veto rate.
+- Open the UI in a browser (`npm run serve:web`) and check the side-by-side.
 - Second wallet for the demo's hostile proposer (currently the deployer).
-- README with TMXTribe / Term Labs framing; demo video.
+- Primary-source citations for TMXTribe and Term Labs (marked TODO in
+  `bench/drain_cases.json`).
+- Demo video; verification log tidy; submission.
 - Full consensus spike: live changing page + enum verdict + confidence
   tolerance, run ≥10 times; record agree/disagree rate.
 - Ghost→pause() spike — Bradbury only.
