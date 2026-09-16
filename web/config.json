@@ -1,0 +1,13 @@
+{
+  "network": "Studio Next (chain 61997)",
+  "rpc": "https://studio-next.genlayer.com/api",
+  "explorer": "https://explorer-studio-dev.genlayer.com",
+  "vault": "0x93A35A1a192E2A67e0816d178D8b14ed96590977",
+  "governor": "0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574",
+  "circuit": "0x7Fc4784365a6c209753ae35740a89e03bd45a984",
+  "contract_names": {
+    "0x93A35A1a192E2A67e0816d178D8b14ed96590977": "DemoVault",
+    "0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574": "DemoGovernor",
+    "0x7Fc4784365a6c209753ae35740a89e03bd45a984": "Circuit"
+  }
+}

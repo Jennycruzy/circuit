@@ -6,3 +6,5 @@ __pycache__/
 *.keystore.json
 frontend/.next/
 frontend/out/
+__pycache__/
+.pytest_cache/

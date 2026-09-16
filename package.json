@@ -1,14 +1,16 @@
 {
   "name": "circuit",
   "version": "1.0.0",
-  "description": "",
+  "description": "Circuit \u2014 autonomous circuit breaker and governance veto on GenLayer",
   "main": "index.js",
   "directories": {
     "doc": "docs",
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "~/.venv-circuit/bin/python -m pytest tests/direct -q",
+    "build:web": "esbuild web/src/lib.js --bundle --format=esm --minify --outfile=web/lib.js",
+    "serve:web": "python3 -m http.server 8080 --directory web"
   },
   "repository": {
     "type": "git",
@@ -24,5 +26,8 @@
   "homepage": "https://github.com/Jennycruzy/circuit#readme",
   "dependencies": {
     "genlayer-js": "^2.0.0-rc.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

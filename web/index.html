@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuit — governance watch</title>
+<style>
+  :root { --bg:#0b0d10; --panel:#12161b; --line:#232a33; --fg:#e6e9ee; --dim:#8b95a3;
+          --ok:#3ecf8e; --warn:#f2c94c; --bad:#ff5c5c; --accent:#6ea8fe; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace }
+  header { padding:20px 24px; border-bottom:1px solid var(--line); display:flex; gap:24px; align-items:baseline; flex-wrap:wrap }
+  header h1 { margin:0; font-size:18px; letter-spacing:.04em }
+  header .net { color:var(--dim) }
+  main { padding:20px 24px; display:grid; gap:20px; max-width:1400px }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px }
+  h2 { margin:0 0 12px; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim) }
+  table { width:100%; border-collapse:collapse } th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top }
+  th { color:var(--dim); font-weight:normal }
+  tr.row { cursor:pointer } tr.row:hover { background:#181d24 }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; border:1px solid }
+  .NO_ACTION { color:var(--ok); border-color:var(--ok) } .FLAG { color:var(--warn); border-color:var(--warn) }
+  .VETO { color:var(--bad); border-color:var(--bad) } .NONE { color:var(--dim); border-color:var(--line) }
+  .state-VETOED { color:var(--bad) } .state-EXECUTED { color:var(--ok) } .state-QUEUED { color:var(--warn) } .state-ACTIVE { color:var(--accent) }
+  .side { display:grid; grid-template-columns:1fr 1fr; gap:12px }
+  .side > div { border:1px solid var(--line); border-radius:6px; padding:12px; min-height:90px }
+  .side .label { color:var(--dim); font-size:12px; margin-bottom:6px }
+  .side .says { font-size:18px } .side .does { font-size:16px; word-break:break-all }
+  .mismatch { border-color:var(--bad) !important; background:#1c1013 }
+  .match { border-color:var(--ok) !important }
+  .banner { margin-top:10px; padding:8px 12px; border-radius:6px; font-size:13px }
+  .banner.bad { background:#2a1214; color:#ff9a9a } .banner.ok { background:#0f2a1e; color:#8fe3bd } .banner.dim { color:var(--dim) }
+  dl { display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; margin:0 } dt { color:var(--dim) } dd { margin:0; word-break:break-all }
+  a { color:var(--accent); text-decoration:none } a:hover { text-decoration:underline }
+  .kv { display:flex; gap:24px; flex-wrap:wrap } .kv div span { color:var(--dim); display:block; font-size:12px }
+  .reason { white-space:pre-wrap; border-left:2px solid var(--line); padding-left:12px; margin:8px 0 }
+  .muted { color:var(--dim) } .err { color:var(--bad) }
+  @media (max-width:800px){ .side { grid-template-columns:1fr } }
+</style>
+</head>
+<body>
+<header>
+  <h1>CIRCUIT</h1>
+  <span class="net" id="net">connecting…</span>
+  <span class="net" id="updated"></span>
+</header>
+<main>
+  <section id="vault-panel"><h2>Protected vault</h2><div id="vault" class="kv muted">loading…</div></section>
+  <section><h2>Governance watch</h2>
+    <table><thead><tr><th>#</th><th>stated description</th><th>decoded action</th><th>turnout / quorum</th><th>state</th><th>timelock</th><th>Circuit verdict</th></tr></thead>
+    <tbody id="proposals"><tr><td colspan="7" class="muted">loading…</td></tr></tbody></table>
+  </section>
+  <section id="detail"><h2>Proposal detail</h2><div class="muted">select a proposal</div></section>
+  <section><h2>Assessment log</h2>
+    <table><thead><tr><th>idx</th><th>proposal</th><th>verdict</th><th>hostile</th><th>description matches calldata</th><th>confidence</th><th>gate reason</th><th>assessed at</th></tr></thead>
+    <tbody id="log"><tr><td colspan="8" class="muted">loading…</td></tr></tbody></table>
+  </section>
+  <section><h2>About this page</h2>
+    <p class="muted">Every row is read from Studio Next with <code>readContract</code> on the three contracts in <code>config.json</code>. Nothing is simulated: proposals are real transactions, verdicts are the stored output of a real validator committee, and a veto is a real message from the Circuit contract to the governor. Decoded actions are decoded in the browser from the proposal's raw calldata with the same codec the contracts use; Circuit's own on-chain decode is shown in the detail view when an assessment exists.</p>
+  </section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
