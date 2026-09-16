@@ -38,7 +38,13 @@
   on-chain. Benign proposal on the earlier governor executed for real
   (`fee_bps` 0 → 30). 27 direct tests.
 
-## Current status (2026-09-16 20:45 UTC)
+- 2026-09-16 21:36: **Spike 2 passes; §5.6 failure shape confirmed.** 8/8
+  consensus on live/changing/per-request-unique content with closed-field
+  comparison; dead and 429'd sources degrade to `SOURCE_FAILED` without
+  killing the tx; ~49 s finality for a 4-fetch/3-LLM transaction. Web evidence
+  stays in the drain path (§A4 step 4 decision). Evidence in verification log.
+
+## Current status (2026-09-16 21:36 UTC)
 - Live demo set: vault `0x93A35A1a192E2A67e0816d178D8b14ed96590977`,
   governor `0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574`, Circuit
   `0x7Fc4784365a6c209753ae35740a89e03bd45a984`. Circuit is also the vault's
@@ -83,9 +89,8 @@
 - Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- Circuit `assess` (drain path) per main-spec §5.2 — paste the main spec.
-  Then spike 2 (web-content consensus), the real drain, and the drain-side
-  frontend surface.
+- Circuit `assess` (drain path) per main-spec §5.2, then the real drain and
+  the drain-side frontend surface.
 - Grow `bench/governance_corpus.json` past its 2-entry seed (benign DAO
   proposals + known malicious ones) and measure the false-veto rate.
 - Open the UI in a browser (`npm run serve:web`) and check the side-by-side.

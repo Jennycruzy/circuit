@@ -564,3 +564,44 @@ Equivalence observations for `docs/equivalence.md`: across 4 model families
 in two assessments, the boolean fields never disagreed; confidence varied by
 up to 10 points (90 vs 100) — well inside the ±30 tolerance. Sample size is
 two; the replay benchmark (§A3.3) must measure this properly.
+
+## Spikes 1 & 2 (web fetch reliability, consensus on live content) — 2026-09-16 21:26–21:36 UTC
+
+Probe `spikes/evidence_probe.py` at **`0x63Df50438878DFA299902D5e8245A2302Fb7668F`**
+(earlier build `0x7A5e7aA9…0460` for the first three runs). Every source is
+real and uncontrolled; nothing was hosted by us. Validators re-fetch and
+re-classify independently and compare only closed fields (status class,
+keyword hit, category enum); bytes and lengths are logged, never compared.
+
+| run | source | result | committee | tx |
+|---|---|---|---|---|
+| 1–3 | `hnrss.org/newest` (turns over every minute), keyword "Balancer", 3 iterations over 3 min | `UNRELATED` ×3, 1 round each, 47–53 s | deepseek, gpt-oss; gemini, gemini-3-flash; gpt-5.4, gemini | `0x2fb24ac2…dd34`, `0xfe99085a…a96f`, `0x54d77b23…1467` |
+| 4 | `worldtimeapi.org` | fetch **raised** `NondetException: SENDING_REQUEST`; caught → `SOURCE_FAILED`; tx succeeded | grok, gpt-5.4 agree | `0xc632ce28…a99f` |
+| 5 | CoinGecko simple price | **HTTP 429** for every node (validator IPs are rate-limited) → `SOURCE_FAILED`; tx succeeded | gemini ×2 agree | `0x6772e5f4…09c1` |
+| 6 | `httpbin.org/uuid` (unique body per request) | leader sha `16e85d763d6f`, validators `2f3d06a05882` and `26e455aeae31` — **three different byte streams, consensus held** | sonnet-4.6, mistral | `0xd2ae0d9c…b895` |
+| 7 | `api.llama.fi/hacks` (security feed, 346,004 bytes) | fetched whole in-VM; "Balancer" found; `EXPLOIT_CLAIM` | gpt-5.4, gemini | `0xb16e63c3…7719` |
+| 8 | `probe_many`: hacks feed + HN + uuid + a dead host, one tx | `[EXPLOIT_CLAIM, UNRELATED, UNRELATED, SOURCE_FAILED]`; uuid digests differed per node; dead host caught | sonnet, gpt-5.4 | `0x6260208f…7d3a` |
+
+Answers:
+1. **Spike 2 passes.** A heterogeneous committee reaches consensus on live,
+   changing, even per-request-unique content when the comparison is on
+   derived closed fields, not bytes. 8/8 transactions `MAJORITY_AGREE` in one
+   round. Web evidence stays in the drain path.
+2. **Failure shape (main-spec §5.6).** A dead host raises
+   `gl.nondet.NondetException` inside the nondet block; an HTTP error returns
+   a status. Both are catchable, recorded as `SOURCE_FAILED`, and execution
+   continues — the transaction does not die. Degraded-confidence verdicts are
+   achievable exactly as specified.
+3. **Rate limiting is real:** CoinGecko 429'd validator IPs. Any source that
+   rate-limits by IP is unreliable evidence and must be optional.
+4. **No size limit hit at 346 KB.** Body truncation for the prompt is our
+   choice (30,000 chars used), not a VM constraint at this size.
+5. **Latency.** Single fetch + one LLM call: 42–53 s to finality. Four
+   fetches + three LLM calls per node: **49.4 s** to finality (submitted
+   21:35:08, finalized 21:35:57; one round, quorum reached with 2 validators,
+   2 cancelled). Fetch count barely moves the number; finality dominates.
+   Add ~32 s for a `pause()` child message → **~80 s trigger-to-pause** on
+   Studio Next, the figure used in `bench/replay.py`.
+6. Note on caching: `hnrss.org` returned byte-identical bodies to all nodes
+   within a transaction (cached upstream); it is a weaker stress test than
+   run 6 and is reported as such.
