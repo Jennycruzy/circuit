@@ -1,0 +1,28 @@
+{
+  "name": "circuit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jennycruzy/circuit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Jennycruzy/circuit/issues"
+  },
+  "homepage": "https://github.com/Jennycruzy/circuit#readme",
+  "dependencies": {
+    "genlayer-js": "^2.0.0-rc.1"
+  }
+}

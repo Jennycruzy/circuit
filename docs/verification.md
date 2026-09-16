@@ -206,3 +206,66 @@ Consequences for Circuit (recorded in PROGRESS.md):
    model, `eq_outputs`, and each validator's vote and stdout. This is how the
    equivalence iteration in `docs/equivalence.md` will be evidenced.
 3. Explorer: https://explorer-studio.genlayer.com/ (addresses above).
+
+## Target network change: Studio Next (chain 61997) — 2026-09-16 11:20 UTC
+
+Organisers' week-1 FAQ: the project **must** be deployed on Studio Next
+(RPC https://studio-next.genlayer.com/api, chain ID 61997, explorer
+https://explorer-studio-dev.genlayer.com/). Other networks do not satisfy the
+requirement. Bradbury work is dropped; the faucet blocker is moot.
+
+Verified facts (all executed, not read):
+- `https://studio-next.genlayer.com/api` and `https://studio-dev.genlayer.com/api`
+  both answer `eth_chainId` = `0xf22d` (61997). Same network, two hostnames.
+  genlayer-js 2.0.0-rc.1 exports it as `studioDevnet`; CLI 0.40.0-rc.3 as `studio-dev`.
+- Fees are enabled (`sim_getFeeConfig.enabled = true`, `genPerTimeUnit = 1`).
+  Deploy without fees → `FeeValueMustBeNonZero(1)` (EVM tx
+  `0x730fcb7b…783`). The CLI 0.40.0-rc.3 sends the same error *with*
+  `--fee-value`, because it bundles an unreleased git commit of genlayer-js,
+  not `2.0.0-rc.1`. Deploying through `genlayer-js@2.0.0-rc.1` directly
+  (`scripts/deploy.cjs`, `estimateTransactionFees` → `deployContract({fees})`)
+  works. **CLI is not used for Studio Next transactions.**
+- `sim_fundAccount` returns a FINALIZED tx but `eth_getBalance` stays 0;
+  the network nevertheless accepts transactions from the 0-GEN deployer and
+  the balance afterwards reads ~0.0999 GEN (deposit refund accounting). Fee
+  accounting on Studio Next is simulated; not a blocker.
+- **GenVM is v0.3.0 on Studio Next.** The v0.2 header
+  (`py-genlayer:1jb45aa8…`) is rejected: `invalid_contract runner malformed`
+  (tx `0x2ec39dc1…4fef`). Required header, taken from Studio Next's own
+  bundled examples:
+  ```
+  # v0.3.0
+  # { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
+  ```
+- v0.3.0 API differs from the installed `genlayer-dev` skill and the v0.2 docs
+  (migration guide: https://sdk.genlayer.com/main/executors/v0.3/python-sdk/migration-guide.html):
+  `import genlayer as gl; from genlayer.types import *`; `gl.contract.Contract`;
+  `gl.vm.run_nondet_unsafe` → **`gl.vm.run_nondet`** (unsafe) and old safe
+  `run_nondet` → **`gl.vm.run_nondet_default`** (use this); `u256(...)` wrappers
+  gone (plain ints); `gl.get_contract_at` → `gl.contract.get_at`;
+  `gl.contract_interface` → `gl.contract.interface`; `gl.storage.TreeMap/DynArray`;
+  `UserError.data` not `.message`; `on='accepted'` → `on='decided'`.
+  Confirmed by execution: `run_nondet_unsafe` → `AttributeError` on-chain
+  (tx `0x03b8c061…ce29`); `run_nondet_default` works.
+- `genvm-lint 0.11.0` lints v0.3.0 contracts (3 checks pass) but cannot load
+  the `5jycge…` runner for its validation step. Lint is still run; validation
+  is done by the network.
+
+### Hello-world on Studio Next — 2026-09-16 11:38–11:41 UTC
+
+- Deploy tx `0xdd0c4ae73fdc8c2f92271c157722dba42ff0c9967c8d7e9aa89948c03cac925e`
+  → contract **`0xA8E321f40c5230f9356e08F77420fF7FB06aE1D1`**, 4.3 s to decided,
+  `FINISHED_WITH_RETURN`.
+  Explorer: https://explorer-studio-dev.genlayer.com/address/0xA8E321f40c5230f9356e08F77420fF7FB06aE1D1
+- `probe("https://example.com/")` tx
+  `0xdd623724df526c2b66d4636c280f7b13c3956353cd13486ed72c37e4d9074765`
+  → `MAJORITY_AGREE`, 1 round, 10.5 s, `FINISHED_WITH_RETURN`.
+  Validators gpt-oss, gemini, gpt-5.4 each logged
+  `validator: leader=PLACEHOLDER/200 mine=PLACEHOLDER/200`; one idle (quorum).
+- `get()` → `{last_status: 200, last_body_len: 559, last_topic: 'PLACEHOLDER', runs: 1}`.
+
+### Open: IC→EVM on Studio Next
+Docs (messages page): "Studio: EVM contract interaction beyond value transfers
+to EOAs is not implemented … Ghost contracts are not implemented." Studio Next
+is still Studio. To be tested by execution next (spike 3); if confirmed, the
+DemoVault becomes an Intelligent Contract paused via an IC→IC internal message.

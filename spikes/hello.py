@@ -1,16 +1,18 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+# v0.3.0
+# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
 
 # Day-one spike: prove one real non-deterministic transaction (a web fetch and
 # an LLM prompt) reaches consensus on the live network and lands in storage.
 
 import json
-from genlayer import *
+import genlayer as gl
+from genlayer.types import *
 
 ERROR_TRANSIENT = "[TRANSIENT]"
 ERROR_LLM = "[LLM_ERROR]"
 
 
-class Hello(gl.Contract):
+class Hello(gl.contract.Contract):
     greeting: str
     last_url: str
     last_status: u256
@@ -21,10 +23,10 @@ class Hello(gl.Contract):
     def __init__(self):
         self.greeting = "hello"
         self.last_url = ""
-        self.last_status = u256(0)
-        self.last_body_len = u256(0)
+        self.last_status = 0
+        self.last_body_len = 0
         self.last_topic = ""
-        self.runs = u256(0)
+        self.runs = 0
 
     @gl.public.view
     def get(self) -> dict:
@@ -71,9 +73,9 @@ class Hello(gl.Contract):
             print(f"validator: leader={l['topic']}/{l['status']} mine={mine['topic']}/{mine['status']}")
             return int(l["status"]) == mine["status"] and l["topic"] == mine["topic"]
 
-        r = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+        r = gl.vm.run_nondet_default(leader_fn, validator_fn)
         self.last_url = url
-        self.last_status = u256(int(r["status"]))
-        self.last_body_len = u256(int(r["body_len"]))
+        self.last_status = int(r["status"])
+        self.last_body_len = int(r["body_len"])
         self.last_topic = str(r["topic"])
-        self.runs = self.runs + u256(1)
+        self.runs = self.runs + 1

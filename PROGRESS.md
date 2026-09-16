@@ -11,17 +11,22 @@
   Open-ended LLM text failed consensus across 4 rounds first; closed enum
   passed in 1 round. Details in `docs/verification.md`.
 
+- 2026-09-16: **Target network is Studio Next (61997)** per organisers. Hello-world
+  redeployed there on GenVM v0.3.0: contract
+  `0xA8E321f40c5230f9356e08F77420fF7FB06aE1D1`, nondet tx
+  `0xdd623724…4765` MAJORITY_AGREE. Deploy/write/read scripts on
+  genlayer-js 2.0.0-rc.1 in `scripts/`.
+
 ## Next
-- Repeat hello-world on Bradbury once funded.
+- Spike 3 on Studio Next: does `@gl.evm.contract_interface` work? (docs say no)
+  → decide DemoVault-as-IC + IC→IC pause.
 - Full consensus spike: live changing page + enum verdict + confidence
   tolerance, run ≥10 times; record agree/disagree rate.
 - Ghost→pause() spike — Bradbury only.
 - Start the replay corpus (`bench/`).
 
 ## Blocked
-- **Bradbury funding.** Faucet is Turnstile-gated; a human must claim 100 GEN at
-  https://testnet-faucet.genlayer.foundation/ for deployer `0xbdeb496b84d74806d631a51141144ef3a3d4a146`. Everything EVM-related (DemoVault, pause) is
-  Bradbury-only, so this gates §3.3 spike 3 and §6.
+- Nothing external. (Bradbury faucet no longer needed — Studio Next is the target.)
 
 ## Findings that shape the design
 - Committees are heterogeneous (gpt-5.4, gemini, gemma, qwen, mistral, sonnet,
@@ -30,7 +35,16 @@
 - `genlayer trace` does not work on studionet; read
   `eth_getTransactionByHash → consensus_history` directly.
 
+- Studio Next runs GenVM v0.3.0; the `genlayer-dev` skill and most docs describe
+  v0.2. Header, imports, `run_nondet_default`, no `u256()` — see verification log.
+- GenLayer CLI 0.40.0-rc.3 cannot submit fee-bearing txs to Studio Next;
+  genlayer-js 2.0.0-rc.1 can. All network operations go through `scripts/`.
+
 ## Doc divergences from SPEC.md
+0. **Network.** Spec assumes Bradbury (real GEN, EVM interop). Hackathon requires
+   Studio Next (61997), where EVM interop is documented as not implemented.
+   §6 (Solidity DemoVault + Ghost pause) is therefore expected to change to an
+   Intelligent-Contract vault paused by IC→IC message. Confirmed by spike 3 next.
 1. **§5.3 non-comparative EP → comparative re-derivation.** Docs: non-comparative
    is for open-ended outputs (summaries); for classification/safety/settlement
    decisions the validator must independently re-derive and compare the decision
