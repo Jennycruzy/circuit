@@ -15,7 +15,7 @@ class InternalPauseProbe(gl.contract.Contract):
 
     @gl.public.write
     def emit_pause(self) -> None:
-        target = gl.get_contract_at(self.target)
+        target = gl.contract.get_at(self.target)
         target.emit(on="finalized").pause()
         self.emitted = True
 

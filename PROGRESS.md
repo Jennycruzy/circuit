@@ -17,25 +17,33 @@
   `0xdd623724…4765` MAJORITY_AGREE. Deploy/write/read scripts on
   genlayer-js 2.0.0-rc.1 in `scripts/`.
 
-## Current status (2026-09-16 12:32 UTC)
-- `spikes/evm_probe.py` is deployed on Studio Next at
-  `0x2c4A31e7948D1E33D46c0Cc97693b8ef13720c3f` (tx `0xa022162b…14f3`).
-- The recorded target `0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575` has no EVM
-  bytecode and is not an Intelligent Contract. The probe cannot establish EVM
-  support without a real deployed target.
-- A real `view_paused` call was submitted as
-  `0xfc423a5653ae69efaaf6444a3a31535958b2fab2655acc60619cbcfe9681f27b`.
-  At the last check it remained `PROPOSING` with no consensus receipt; the
-  helper also received an HTML response where JSON-RPC was expected. This is
-  unresolved and is not recorded as a success or failure.
+## Current status (2026-09-16 14:35 UTC)
+- `contracts/demo_vault.py` is deployed on Studio Next at
+  `0xa0d10d68050f1f3f993ca99D3E150F95371886eB` (tx
+  `0x3e47c0835891728daac2ad11bf438dfaf4c3045cb77a88ebff0ff6fc60eacfb1`).
+  Its initial live state was unpaused, unconfigured, and zero balance.
+- `spikes/ic_pause.py` is deployed at
+  `0xEe750F2EEF9EDBC10551fF741a05a74C1A1173DB` (tx
+  `0x36626ac9327c64ffe48892a48a1c7a7cd9233c2c7e06c0daa880990ee9a10ecb`).
+  The vault accepted the one-time controller binding in
+  `0x34eb04162d06e4699ac0d6230a5382b27037e6ce34f449e7cb51e0df9900e57d`.
+- `emit_pause` was simulated but not submitted. Studio returned an execution
+  error whose leader stderr reported that `genlayer` has no attribute
+  `get_contract_at`. No pause state change occurred. The source now uses the
+  runtime's `gl.contract.get_at`; a fresh vault/probe pair is needed because
+  the controller binding is one-time.
+- The earlier EVM probe at
+  `0x2c4A31e7948D1E33D46c0Cc97693b8ef13720c3f` remains unresolved, and its
+  recorded target is not deployed. Studio EVM/Ghost support is not claimed.
 - Tooling: `export PATH=$HOME/.nvm/versions/node/v24.21.0/bin:$PATH`; all
-  network ops via `scripts/{deploy,write,read}.cjs` (genlayer-js 2.0.0-rc.1).
-  Do not use the CLI for Studio Next transactions.
-- Contracts must use the v0.3.0 header/API (see verification log).
+  network ops use `scripts/{deploy,write,read}.cjs` with genlayer-js
+  2.0.0-rc.1. The CLI is not used for Studio Next transactions.
+- Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- Deploy a real Studio-compatible vault and verify IC-to-IC control with a
-  live transaction before claiming a pause path.
+- Deploy a fresh vault and corrected pause probe, bind them, and execute the
+  IC-to-IC pause message. Inspect the parent and child transaction receipts
+  before claiming that the pause path works.
 - Full consensus spike: live changing page + enum verdict + confidence
   tolerance, run ≥10 times; record agree/disagree rate.
 - Ghost→pause() spike — Bradbury only.
@@ -45,8 +53,9 @@
 - The recorded EVM target is absent, and Studio does not implement calls to
   EVM contracts beyond value transfers. The Solidity/Ghost path cannot be
   claimed from the current deployment.
-- The Circuit contract, vault contract, frontend, replay benchmark, and tests
-  have not been created yet.
+- The Circuit contract, frontend, and replay benchmark have not been created
+  yet. The vault control path has direct tests, but its live IC-to-IC action is
+  still unproven.
 
 ## Findings that shape the design
 - Committees are heterogeneous (gpt-5.4, gemini, gemma, qwen, mistral, sonnet,
@@ -63,24 +72,28 @@
 ## Doc divergences from SPEC.md
 0. **Network.** Spec assumes Bradbury (real GEN, EVM interop). Hackathon requires
    Studio Next (61997), where EVM interop is documented as not implemented.
-   §6 (Solidity DemoVault + Ghost pause) may need to change to an
-   Intelligent-Contract vault paused by IC-to-IC message. This is not confirmed
-   by the unresolved probe transaction.
+   §6's Solidity/Ghost target is replaced here by an Intelligent-Contract vault
+   and IC-to-IC message path. The live pause action is not yet proven.
 1. **§5.3 non-comparative EP → comparative re-derivation.** Docs: non-comparative
    is for open-ended outputs (summaries); for classification/safety/settlement
    decisions the validator must independently re-derive and compare the decision
-   field. Circuit uses `run_nondet_unsafe` + re-run + compare `verdict` exactly,
-   `confidence` within tolerance. The "reasonableness question" from the spec is
-   kept as the *prompt criteria*, not as the validation mechanism.
-2. **§5.2 step 5 ACT is not instantaneous.** IC→EVM external messages are emitted
-   only on `finalized`. The pause lands after the appeal window closes. Latency
-   to be measured and stated honestly in README.
+   field. Validators should independently re-derive and compare bounded decision
+   fields; free-form reasoning should not be compared. Circuit is not implemented
+   yet, so this remains a design requirement rather than an executed result.
+2. **§5.2 step 5 ACT is not instantaneous.** IC messages are emitted only on
+   `finalized`. The pause lands after the appeal window closes. Latency is to be
+   measured and stated honestly in README.
 3. **§3.3 spike 3 cannot run on Studio.** EVM contract calls are unimplemented in
    Studio; Bradbury only.
 4. **§3.2 "Skills plugin one-command path".** The plugin is skill docs wrapping
    the CLI, not a deploy tool. CLI is the path.
+5. **Cross-contract reference API.** The current public messages page shows
+   `gl.get_contract_at`, but the deployed v0.3.0 runtime has no such attribute.
+   A real simulation failed with that exact runtime error. The source now uses
+   `gl.contract.get_at`; this must be re-run live before it is treated as
+   proven.
 
-## Audit review — 2026-09-16 12:32 UTC
+## Audit review — 2026-09-16 14:35 UTC
 - The Studio account was funded with `sim_fundAccount`; no Bradbury GEN was
   required for the deployed Studio work. The hello deployment and its
   web-fetch/LLM transaction are live evidence.
@@ -90,13 +103,15 @@
 - Public RPC checks returned no EVM bytecode for the hello contract, probe, or
   recorded target. The target's GenLayer code and schema lookup returned
   `Contract ... not found`; the target is not deployed.
-- `npm test` currently exits with the package's placeholder
-  `no test specified` failure. No application tests exist.
+- `pytest tests/direct/test_demo_vault.py -q` passes all 6 direct-runtime
+  tests. `npm test` still exits with the package's placeholder `no test
+  specified` failure.
 - The hello source does not pass the installed linter's reachability check, and
   both hello and probe validation cannot load the pinned v0.3 runner archive.
   The probe's three static checks pass, but that is not full validation.
 - The current package versions are `genlayer-js 2.0.0-rc.1`,
   `genlayer-py 0.19.0rc2`, and `genlayer-test 0.30.0rc2`; the earlier
   tooling notes list older Python and test versions.
-- `scripts/write.cjs` waits for a decided receipt and uses the generic fee
-  estimator without an explicit message allocation. The current fee and
+- `scripts/write.cjs` uses `estimateTransactionFeesForWrite` and waits for
+  finalization. Its first child-message simulation reached contract execution
+  and failed on the stale API name above; no transaction was submitted.

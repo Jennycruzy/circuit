@@ -272,7 +272,7 @@ address has no bytecode or GenLayer contract schema, so the result is not a
 valid EVM interoperability test. The transaction remains unresolved; no
 pause call was emitted.
 
-## Audit review — 2026-09-16 12:32 UTC
+## Audit review — 2026-09-16 14:35 UTC
 
 This review records the checks performed after the previous project handoff.
 It does not convert pending or missing network state into a result.
@@ -296,7 +296,8 @@ It does not convert pending or missing network state into a result.
   consensus data, and no receipt. The helper later received HTML instead of
   JSON-RPC, so the transaction is unresolved and is not evidence that EVM
   calls work or fail.
-- `emit_pause` was not submitted because there is no deployed target.
+- The EVM probe's `emit_pause` was not submitted because its recorded target
+  was not deployed.
 
 ### SDK and documentation
 
@@ -306,5 +307,34 @@ It does not convert pending or missing network state into a result.
   beyond value transfers to EOAs, and external messages execute through Ghost
   only after finality. The Solidity/Ghost path cannot be claimed here.
 - Current fee docs require a message fee budget for message-producing branches.
-  `scripts/write.cjs` uses the generic estimator and waits only for a decided
-  receipt, so it is not ready for a pause call.
+  `scripts/write.cjs` now uses `estimateTransactionFeesForWrite` and waits for
+  finalization. The first pause simulation failed during contract execution
+  before a transaction was submitted.
+
+### DemoVault IC control attempt — 2026-09-16 14:35 UTC
+
+- DemoVault deployment tx
+  `0x3e47c0835891728daac2ad11bf438dfaf4c3045cb77a88ebff0ff6fc60eacfb1`
+  finalized successfully and created
+  `0xa0d10d68050f1f3f993ca99D3E150F95371886eB`.
+  Explorer: https://explorer-studio-dev.genlayer.com/address/0xa0d10d68050f1f3f993ca99D3E150F95371886eB
+- Pause-probe deployment tx
+  `0x36626ac9327c64ffe48892a48a1c7a7cd9233c2c7e06c0daa880990ee9a10ecb`
+  finalized successfully and created
+  `0xEe750F2EEF9EDBC10551fF741a05a74C1A1173DB`.
+  Explorer: https://explorer-studio-dev.genlayer.com/address/0xEe750F2EEF9EDBC10551fF741a05a74C1A1173DB
+- `set_controller(probe)` finalized successfully in
+  `0x34eb04162d06e4699ac0d6230a5382b27037e6ce34f449e7cb51e0df9900e57d`.
+- The first `emit_pause` attempt did not submit a transaction. Both
+  `estimateTransactionFeesForWrite` and a direct `gen_call` simulation returned
+  an execution error. The structured receipt's leader stderr was:
+  `AttributeError: module 'genlayer' has no attribute 'get_contract_at'`.
+  The failed simulation made no state change.
+- The current v0.3.0 runtime exports `gl.contract.get_at`, even though the
+  current public messages page shows `gl.get_contract_at`. The probe source was
+  corrected to the runtime API. Because the controller is one-time, the next
+  live check must deploy a fresh vault and corrected probe, then inspect the
+  resulting parent and child receipts.
+- The direct contract suite passes 6 tests. `genvm-lint` passes its 3 static
+  checks for each contract; its validation step cannot load the pinned v0.3.0
+  runner archive in this environment.
