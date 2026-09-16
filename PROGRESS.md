@@ -17,9 +17,21 @@
   `0xdd623724…4765` MAJORITY_AGREE. Deploy/write/read scripts on
   genlayer-js 2.0.0-rc.1 in `scripts/`.
 
+## Handoff (2026-09-16 11:45 UTC — session stopped by user, credits low)
+- `spikes/evm_probe.py` is deployed on Studio Next at
+  `0x2c4A31e7948D1E33D46c0Cc97693b8ef13720c3f` (tx `0xa022162b…14f3`) but its
+  two methods have NOT been called yet. Resume with:
+  `node scripts/write.cjs 0x2c4A31e7948D1E33D46c0Cc97693b8ef13720c3f view_paused '["0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575"]'`
+  and the same with `emit_pause`. Record the result in docs/verification.md
+  under "Open: IC→EVM on Studio Next". Expected: not implemented → DemoVault
+  becomes an Intelligent Contract paused via `gl.contract.get_at(v).emit(on='finalized').pause()`.
+- Tooling: `export PATH=$HOME/.nvm/versions/node/v24.21.0/bin:$PATH`; all
+  network ops via `scripts/{deploy,write,read}.cjs` (genlayer-js 2.0.0-rc.1).
+  Do not use the CLI for Studio Next transactions.
+- Contracts must use the v0.3.0 header/API (see verification log).
+
 ## Next
-- Spike 3 on Studio Next: does `@gl.evm.contract_interface` work? (docs say no)
-  → decide DemoVault-as-IC + IC→IC pause.
+- Finish spike 3 (above) → decide DemoVault-as-IC + IC→IC pause.
 - Full consensus spike: live changing page + enum verdict + confidence
   tolerance, run ≥10 times; record agree/disagree rate.
 - Ghost→pause() spike — Bradbury only.
