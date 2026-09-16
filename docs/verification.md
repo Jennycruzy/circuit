@@ -430,3 +430,35 @@ Not fatal, but noted: `emit(on="finalized")` is the only phase used so far;
 `on="decided"` is documented and would cut ~30 s off ACT latency at the cost of
 acting before the appeal window closes. Decision deferred to the equivalence
 iteration (`docs/equivalence.md`).
+
+## DemoGovernor live — 2026-09-16 19:50–20:20 UTC
+
+Contracts (`contracts/demo_vault.py` v2 with owner surface, `contracts/demo_governor.py`):
+18 direct tests pass (`tests/direct/`), using a multi-contract harness in
+`tests/direct/conftest.py` that routes `CallContract`, records
+`EmitInternalMessage`/`EmitEvent`, gives each contract its own storage, and
+syncs `gl.message.raw["datetime"]` on `warp`. The stock direct VM does none
+of those; the network is the authority for all of them.
+
+**Timing finding (real, changes the deployment config).** First live governor
+`0xf5266d59CA253B7619198293ae20BA1A56CdCf09` was deployed with a 30 s voting
+period. `propose` (tx `0x2d1a12bc…d5ea`) carried `created_at 1789588402`; the
+`vote` submitted immediately after finality (tx `0x2523999f…7590`) carried
+`19:54:02` — 40 s later — and finished `FINISHED_WITH_ERROR` with user error
+`voting closed`. Every transaction on Studio Next takes ~36–55 s to finality
+and its datetime is fixed at creation, so any governor window must be
+several multiples of that. Redeployed as
+**`0x16C1958C6833CA255dCDDF0dd99b90a31AAAfA6e`** with voting 180 s /
+timelock 300 s / quorum 10 %; fresh vault
+**`0x9804c9624DcbF3f42d13990d1736E21E7a50B570`**, `set_owner(governor)` tx
+`0xf51da748…8a2b`, `set_circuit(probe 0x59e31b12…2C1c)` tx `0x4d6ec30b…99fd`,
+`grant_power(deployer, 100)` tx `0x3a203516…bccc`.
+
+`gl.message.raw["datetime"]` parses with `datetime.fromisoformat` on the live
+runtime (`get_config().now` returned a unix timestamp; `created_at` matched
+the receipt's `created_at` to the second).
+
+Hostile proposal #0: target = vault, calldata
+`0x16004c…dead` = `set_owner(0x…dEaD)`, description "Adjust fee parameter".
+`propose` tx `0x7a1a27d8…42ed`, `vote(0, true)` tx `0xe8d22ec0…4f11` →
+`for_votes 100`, `state ACTIVE`, `voting_ends 1789588889`.

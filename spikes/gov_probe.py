@@ -76,3 +76,9 @@ class GovProbe(gl.contract.Contract):
     @gl.public.view
     def get_state(self) -> dict:
         return {"emitted": int(self.emitted)}
+
+    # A4 step 5 — veto issued from a contract address, as Circuit will.
+    @gl.public.write
+    def emit_veto(self, governor: str, proposal_id: u256) -> None:
+        gl.contract.get_at(Address(governor)).emit(on="finalized").veto(proposal_id)
+        self.emitted = self.emitted + 1
