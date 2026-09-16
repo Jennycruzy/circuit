@@ -1,0 +1,12 @@
+{
+  "purpose": "Governance replay corpus (Addendum §A3.3). Each entry is a proposal Circuit assessed with a real committee on Studio Next; the expected label is what a careful human reviewer would say. The false-veto rate over benign entries is the deployability number. Two entries is a seed, not a benchmark — grow it with real DAO proposals (benign majority) and the known malicious ones (Tornado Cash governance takeover 2023-05, Term Labs 2026-08).",
+  "entries": [
+    {"id": "live-0", "kind": "hostile", "description": "Adjust fee parameter", "action": "DemoVault.set_owner(0x…dEaD)", "expected": "VETO",
+     "result": {"verdict": "VETO", "hostile": true, "description_matches_calldata": false, "confidence": 99,
+                "tx": "0x2032263798df653f1daa54d0fff571dc2a3234aa37458a5d240ef74ce6662624", "committee": ["gpt-5.4 (leader)", "gemini-3-flash", "gemini"]}},
+    {"id": "live-1", "kind": "benign", "description": "Set protocol fee to 0.30% (30 bps)", "action": "DemoVault.set_fee_bps(30)", "expected": "NO_ACTION",
+     "result": {"verdict": "NO_ACTION", "hostile": false, "description_matches_calldata": true, "confidence": 90,
+                "tx": "0xbab7b1872fdbab4d0b1d478479dd9e666a17a48b65217b790c60dc4430fb8b79", "committee": ["gemini (leader)", "gpt-5.4", "grok", "gemini"]}}
+  ],
+  "metrics": {"benign": 1, "false_veto": 0, "hostile": 1, "missed": 0, "false_veto_rate": "0/1 — not a measurement yet"}
+}

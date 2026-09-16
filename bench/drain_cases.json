@@ -1,0 +1,40 @@
+{
+  "source": {
+    "name": "Decurity Research — DeFi Exploit Drain Timelines (rescue window)",
+    "url": "https://rescue-window.decurity.io",
+    "accessed": "2026-09-16",
+    "note": "Timeline facts transcribed for citation; the dataset itself is not mirrored. Percentages are of funds at risk (the value reachable by the exploit vector), as defined by the source."
+  },
+  "marks_min": [1, 5, 15, 30, 60],
+  "cases": [
+    {"id": "nomad", "protocol": "Nomad Bridge", "date": "2022-08-01", "at_risk_usd": 190740000, "duration_min": 153.3,
+     "drained_usd_at": [15726947, 15726947, 16198829, 22938949, 27174184], "pause": "none (immutable bridge)", "recovered_usd": 36000000},
+    {"id": "foom", "protocol": "Foom Cash", "date": "2026-02-26", "at_risk_usd": 2268638, "duration_min": 15.97,
+     "drained_usd_at": [428638, 428638, 428638, 2268638, 2268638], "pause": "none; whitehat secured $1.84M on Ethereum", "recovered_usd": 1840000},
+    {"id": "rhea", "protocol": "Rhea Finance (NEAR)", "date": "2026-04-16", "at_risk_usd": 18399998, "duration_min": 66.2,
+     "drained_usd_at": [905251, 4026782, 11381144, 15757667, 18350339], "pause": "paused post-exploit only", "recovered_usd": 11200000},
+    {"id": "squid", "protocol": "Squid Multicall Approval", "date": "2026-04-07", "at_risk_usd": 623235, "duration_min": 42.8,
+     "drained_usd_at": [2400, 121123, 514486, 613566, 623235], "pause": "no pause possible (user approvals)", "recovered_usd": 512086},
+    {"id": "euler", "protocol": "Euler Finance", "date": "2023-03-13", "at_risk_usd": 187000000, "duration_min": 41.2,
+     "drained_usd_at": [7449102, 7449102, 160398341, 169967526, 187000000], "pause": "none (v1 had no emergency shutdown)", "recovered_usd": 187000000},
+    {"id": "sonne", "protocol": "Sonne Finance", "date": "2024-05-14", "at_risk_usd": 20000000, "duration_min": 30.9,
+     "drained_usd_at": [2983969, 2983969, 2983969, 18788531, 20000000], "pause": "Compound-v2 fork; no effective pause triggered", "recovered_usd": 6500000},
+    {"id": "balancer", "protocol": "Balancer V2", "date": "2025-11-03", "at_risk_usd": 126021000, "duration_min": 285.9,
+     "drained_usd_at": [67612575, 116801351, 116982038, 116982038, 117059616], "pause": "Vault has emergency pause; not triggered", "recovered_usd": 34671000},
+    {"id": "crosscurve", "protocol": "CrossCurve", "date": "2026-02-01", "at_risk_usd": 2760000, "duration_min": 101.0,
+     "drained_usd_at": [1577146, 2149707, 2659903, 2708738, 2735829], "pause": "none; no defender appeared", "recovered_usd": 18980},
+    {"id": "curve", "protocol": "Curve (Vyper)", "date": "2023-07-30", "at_risk_usd": 69000000, "duration_min": 7957.0,
+     "drained_usd_at": [11194124, 11194124, 11194124, 11194124, 11194124], "pause": "no pool-level pause; emergency admin kill not used in time", "recovered_usd": 36022446,
+     "note": "multi-pool event over days; the source marks the minute-window metric not applicable"},
+    {"id": "seneca", "protocol": "Seneca", "date": "2024-02-28", "at_risk_usd": 6453703, "duration_min": 166.6,
+     "drained_usd_at": [4220905, 4220905, 4220905, 4223387, 6352272], "pause": "none", "recovered_usd": 5423703}
+  ],
+  "named_cases_from_brief": [
+    {"protocol": "TMXTribe", "date": "2026-01", "loss_usd": 1400000, "window": "~36 hours while the team watched and patched but did not pause",
+     "why_it_matters": "a decision problem, not a speed problem — the strongest case for an autonomous judge",
+     "citation": "TODO: primary source before submission; figures as given in the project brief"},
+    {"protocol": "Term Labs", "date": "2026-08", "loss_usd": 8500000, "window": "governance delay bypassed; single wallet passed a vault-seizing proposal on near-zero turnout",
+     "why_it_matters": "no abnormal outflow exists to detect; only reading the proposal catches it — the governance veto module",
+     "citation": "TODO: primary source before submission; figures as given in the project brief"}
+  ]
+}
