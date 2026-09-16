@@ -9,7 +9,7 @@ const { client, parseArgs, feesFor, feesForWrite, feesWithMessages, waitFinalize
   const force = argv.includes("--force");
   const mi = argv.indexOf("--messages");
   const messages = mi >= 0 ? argv[mi + 1] : null;
-  const positional = argv.filter((a, i) => a !== "--force" && a !== "--messages" && i !== mi + 1);
+  const positional = argv.filter((a, i) => a !== "--force" && a !== "--messages" && (mi < 0 || i !== mi + 1));
   const [address, functionName, argsJson, valueWei] = positional;
   if (!address || !functionName) throw new Error("usage: write.cjs <address> <method> [json-args] [value-wei]");
   const { client: c, account } = client();

@@ -527,3 +527,40 @@ governor **`0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574`** (180 s / 300 s /
 `0x2ed0c01c…167e`, `set_controller(circuit)` `0xb2748724…da67`,
 `set_circuit(circuit)` `0x716095a6…2537`, `grant_power` `0xc3f80a42…b736`.
 Hostile proposal 0 `propose` `0x54ec86a2…12c0`, `vote` `0x896931a5…322a`.
+
+### Circuit governance path, live, real committee — 2026-09-16 20:34–20:45 UTC
+
+**Hostile proposal 0** (`set_owner(0x…dEaD)` described as "Adjust fee parameter"):
+- `assess_proposal(0)` tx
+  **`0x2032263798df653f1daa54d0fff571dc2a3234aa37458a5d240ef74ce6662624`**,
+  `MAJORITY_AGREE` in 1 round, 46.2 s. Leader `policy:dev-gpt-5-4`:
+  hostile=True, matches=False, confidence 99. Validators
+  `google/gemini-3-flash-preview` and `policy:dev-gemini` each re-judged:
+  hostile=True, matches=False, confidence 100 → agree. Two idle after quorum.
+- Record (`latest_assessment(0)`): action `calls 0x93A3…0977.set_owner(0x…dEaD)`,
+  privileged=True, decodable=True, turnout 10000 bps, proposer share 10000
+  bps, power age 386 s, `description_matches_calldata: false`,
+  gate: "privileged target, hostile at high confidence, description does NOT
+  match calldata", verdict **VETO**, vetoed=True. Reasoning cites the decoded
+  call verbatim.
+- ACT: child tx `0xfa80c3fd8a3c34754923a76ee47104da9114c6d49d938486375c83bf619128c7`
+  → governor proposal 0 `state: VETOED`.
+- `execute(0)` tx `0xa88c0a655b30e410a7b866a2901ca41fbecf834b625d31e6824f659b3aa98555`
+  → `FINISHED_WITH_ERROR` (`proposal was vetoed`). Vault `0x93A3…0977`
+  still `owner: governor`. **The money never moved.**
+
+**Benign proposal 1** (`set_fee_bps(30)`, "Set protocol fee to 0.30% (30 bps)"):
+- `propose` `0x0095307f…2da5`, `vote` `0x1df06619…7698`.
+- `assess_proposal(1)` tx
+  **`0xbab7b1872fdbab4d0b1d478479dd9e666a17a48b65217b790c60dc4430fb8b79`**,
+  `MAJORITY_AGREE`, 1 round, 58.0 s. Leader gemini: hostile=False,
+  matches=True, 90. Validators `openai/gpt-5.4` (96), `policy:dev-grok`
+  (90), `policy:dev-gemini` (100) all agree.
+- Verdict **NO_ACTION** ("privileged target, judged benign, description
+  matches calldata"); `messages: []`, no child tx. Circuit did not veto
+  governance it merely found privileged.
+
+Equivalence observations for `docs/equivalence.md`: across 4 model families
+in two assessments, the boolean fields never disagreed; confidence varied by
+up to 10 points (90 vs 100) — well inside the ±30 tolerance. Sample size is
+two; the replay benchmark (§A3.3) must measure this properly.

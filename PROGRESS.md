@@ -31,7 +31,22 @@
   parameter") vetoed by a contract message (child `0x405b5039…88ad`);
   `execute(0)` reverted on-chain with `proposal was vetoed`. 18 direct tests.
 
-## Current status (2026-09-16 20:06 UTC)
+- 2026-09-16 20:45: **Governance path complete end to end on Studio Next
+  with a real committee.** Circuit `0x7Fc47843…a984` vetoed hostile proposal
+  0 (VETO, leader gpt-5.4 99, validators gemini 100) and cleared benign
+  proposal 1 (NO_ACTION, 4 model families agree). `execute(0)` reverted
+  on-chain. Benign proposal on the earlier governor executed for real
+  (`fee_bps` 0 → 30). 27 direct tests.
+
+## Current status (2026-09-16 20:45 UTC)
+- Live demo set: vault `0x93A35A1a192E2A67e0816d178D8b14ed96590977`,
+  governor `0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574`, Circuit
+  `0x7Fc4784365a6c209753ae35740a89e03bd45a984`. Circuit is also the vault's
+  `controller` (pause authority) — the drain path can bind to this set.
+- §A4 steps 1–5 and 7 done. Step 6 (`assess`, drain path, main-spec §5.2)
+  needs the main spec text in-session; not started. Steps 8–12 not started.
+
+## Superseded status (2026-09-16 20:06 UTC)
 - Addendum A received. Order of work now follows §A4. Steps 1–5 of §A4 are
   done except DemoGovernor itself (next). The governance path has no web
   inputs, so it does not depend on spike 2; if spike 2 fails it is the primary
@@ -65,11 +80,15 @@
 - Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- Benign proposal 1 lifecycle live (queue → execute → `fee_bps` = 30).
-- Circuit contract: `assess_proposal` (§A2.4) — READ/DECODE/CONTEXT
-  deterministic, JUDGE via `run_nondet_default` with enum verdict + bounded
-  confidence compared by validators, GATE, ACT (`emit veto`), RECORD.
-- Circuit contract: `assess` (drain path) per main-spec §5.2.
+- Circuit `assess` (drain path) per main-spec §5.2 — paste the main spec.
+- `docs/equivalence.md` (both paths); governance-side observations already in
+  the verification log.
+- Frontend (§A5): governance watch + side-by-side + proposal detail; reads via
+  genlayer-js `readContract` on the three live addresses.
+- Replay benchmark (§A3): Decurity rescue-window cases + governance corpus;
+  false-veto rate.
+- Second wallet for the demo's hostile proposer (currently the deployer).
+- README with TMXTribe / Term Labs framing; demo video.
 - Full consensus spike: live changing page + enum verdict + confidence
   tolerance, run ≥10 times; record agree/disagree rate.
 - Ghost→pause() spike — Bradbury only.
@@ -119,6 +138,14 @@
 6. **Addendum §A2.3 "Solidity governor".** Written as an Intelligent Contract on
    Studio; proposal calldata is GenVM calldata, not EVM ABI. The description-vs-
    calldata mismatch signal is unchanged.
+7. **§A2.4 GATE table.** The table does not separate the hostile verdict from
+   the confidence in it, which would make every honest privileged proposal at
+   least FLAG (contradicting demo beat 2's NO_ACTION). Implemented: confidence
+   = confidence in `hostile`; non-hostile + matching description → NO_ACTION;
+   non-hostile + mismatch → FLAG; the rest of the table as written.
+8. **Studio simulation clock.** Fee estimation simulates at the last state
+   snapshot's datetime, so time-gated calls fail estimation; `scripts/write.cjs
+   --force` / `--messages` submit them anyway (see verification log).
 
 ## Audit review — 2026-09-16 14:35 UTC
 - The Studio account was funded with `sim_fundAccount`; no Bradbury GEN was
