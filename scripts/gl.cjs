@@ -67,6 +67,27 @@ function parseArgs(json) {
   return conv(JSON.parse(json));
 }
 
+// Studio Next simulates writes at the datetime of the last state snapshot, so a
+// time-gated call (timelock, voting deadline) fails estimation even when it
+// would succeed for real. For such calls that also emit internal messages,
+// build the message allocations by hand from a known-good estimate's shape.
+// spec: "recipient:method[,recipient:method]"
+const MESSAGE_BUDGET = 120000000000010352n;
+const MESSAGE_FEE_PARAMS = "0x" + [
+  "20", "64", "c8", "0", "6a94d74f430000", "100", "2", "11e1a300", "11e1a300", "1", "3",
+].map((h) => h.padStart(64, "0")).join("");
+async function feesWithMessages(c, spec) {
+  const est = await c.estimateTransactionFees({});
+  const allocations = spec.split(",").map((pair) => {
+    const [recipient, method] = pair.split(":");
+    const callKey = "0x" + Buffer.from(method, "utf8").toString("hex").padEnd(64, "0");
+    return { messageType: 1, onAcceptance: false, parentIndex: (1n << 256n) - 1n, recipient: recipient.toLowerCase(), callKey, budget: MESSAGE_BUDGET, feeParams: MESSAGE_FEE_PARAMS };
+  });
+  const total = MESSAGE_BUDGET * BigInt(allocations.length);
+  const distribution = { ...est.distribution, totalMessageFees: total };
+  return { distribution, messageAllocations: allocations, feeValue: BigInt(est.feeValue) + total, policy: est.policy };
+}
+
 function requireSuccessful(tx) {
   if (!isSuccessful(tx)) {
     const result = tx.txExecutionResultName || tx.result_name || tx.txExecutionResult || "unknown";
@@ -87,4 +108,4 @@ function summarize(tx) {
   };
 }
 
-module.exports = { parseArgs, client, publicClient, feesFor, feesForWrite, waitDecided, waitFinalized, requireSuccessful, summarize, studioDevnet, isSuccessful };
+module.exports = { parseArgs, feesWithMessages, client, publicClient, feesFor, feesForWrite, waitDecided, waitFinalized, requireSuccessful, summarize, studioDevnet, isSuccessful };

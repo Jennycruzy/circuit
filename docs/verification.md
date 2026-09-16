@@ -485,3 +485,45 @@ Hostile proposal #0: target = vault, calldata
 - Benign proposal #1 (`set_fee_bps(30)`, "Set protocol fee to 0.30% (30
   bps)"): `propose` tx `0x34a803b7…4d08`, `vote(1,true)` tx `0x1a2b6984…1fe7`;
   queue/execute recorded below when the windows elapse.
+
+### Benign proposal executes through the governor — 2026-09-16 20:12–20:24 UTC
+
+- `queue(1)` tx `0x89c91f00fbad360166790a91f91ca78d3799a18c914eb44c97d4c501832f37d6`
+  → `QUEUED`, `eta 1789589611`.
+- **Finding: Studio Next simulates writes at the datetime of the contract's
+  last state snapshot, not the wall clock.** `sim_call` on `execute(1)` at
+  real time 1789589700 returned user error `timelock not elapsed`; the same
+  call as a real transaction (datetime fixed at submission) passed. Any
+  time-gated method therefore fails `estimateTransactionFeesForWrite` until
+  another transaction touches the contract. A forced `execute(1)` without
+  message allocations (tx `0x82899d45…18fe`) failed with VM error
+  `fee no_matching_allocation # internal`, which confirms the allocation is
+  mandatory for message-emitting branches. `scripts/write.cjs --messages
+  recipient:method` now builds the allocation by hand from a known-good
+  estimate (`feeParams` words `20 64 c8 0 6a94d74f430000 100 2 11e1a300
+  11e1a300 1 3`; a wrong word is rejected on-chain as `InvalidFeeParams`,
+  EVM tx `0x438985cf…849b`).
+- `execute(1)` tx
+  **`0x22d4f25f4899421512c115e2551921f7c7b430b960b5a62ebccf11ba8ca994ff`**
+  (finalized 36.7 s) → child
+  `0x6a4784d01c480b5e885d695dfdee934fcb4cc7dc7cbc0f9b0e39f578682ddb3b` →
+  vault `0x9804c962…B570` reads `fee_bps: 30, last_action: fee_changed`.
+  The governor's dynamic dispatch (`getattr(proxy.emit(), method)(*args)`
+  over decoded GenVM calldata) works on the live runtime. Governor controls
+  something real (§A2.3).
+
+## Circuit contract (governance path) — 2026-09-16 20:20 UTC
+
+`contracts/circuit.py` `assess_proposal`: 9 direct tests (27 total) cover
+DECODE/CONTEXT facts, the GATE table, the veto message, RECORD, LLM output
+shape enforcement, and the validator comparison rule (hostile and
+description_matches compared exactly, confidence within ±30, reasoning
+ignored). `genvm-lint` reports the same reachability false positive it
+reports for the hello spike (it does not recognise `run_nondet_default`).
+Deployed set: vault **`0x93A35A1a192E2A67e0816d178D8b14ed96590977`**,
+governor **`0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574`** (180 s / 300 s /
+10 %), Circuit **`0x7Fc4784365a6c209753ae35740a89e03bd45a984`**
+(high_confidence 80, turnout floor 20 %). Wiring txs: `set_owner`
+`0x2ed0c01c…167e`, `set_controller(circuit)` `0xb2748724…da67`,
+`set_circuit(circuit)` `0x716095a6…2537`, `grant_power` `0xc3f80a42…b736`.
+Hostile proposal 0 `propose` `0x54ec86a2…12c0`, `vote` `0x896931a5…322a`.

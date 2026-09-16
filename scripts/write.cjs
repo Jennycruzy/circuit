@@ -1,15 +1,23 @@
 // node scripts/write.cjs <address> <method> [json-args] [value-wei]
-const { client, parseArgs, feesFor, feesForWrite, waitFinalized, requireSuccessful, summarize } = require("./gl.cjs");
+const { client, parseArgs, feesFor, feesForWrite, feesWithMessages, waitFinalized, requireSuccessful, summarize } = require("./gl.cjs");
 (async () => {
   // --force: skip the simulating estimator so a call expected to revert is
   // still submitted and its failure lands on-chain as evidence.
-  const force = process.argv.includes("--force");
-  const [address, functionName, argsJson, valueWei] = process.argv.slice(2).filter((a) => a !== "--force");
+  // --messages recipient:method[,…]: like --force, but with hand-built
+  // internal-message allocations (see gl.cjs feesWithMessages).
+  const argv = process.argv.slice(2);
+  const force = argv.includes("--force");
+  const mi = argv.indexOf("--messages");
+  const messages = mi >= 0 ? argv[mi + 1] : null;
+  const positional = argv.filter((a, i) => a !== "--force" && a !== "--messages" && i !== mi + 1);
+  const [address, functionName, argsJson, valueWei] = positional;
   if (!address || !functionName) throw new Error("usage: write.cjs <address> <method> [json-args] [value-wei]");
   const { client: c, account } = client();
   const args = parseArgs(argsJson);
   const value = valueWei ? BigInt(valueWei) : undefined;
-  const fees = force ? await feesFor(c) : await feesForWrite(c, { account, address, functionName, args, value });
+  const fees = messages ? await feesWithMessages(c, messages)
+    : force ? await feesFor(c)
+    : await feesForWrite(c, { account, address, functionName, args, value });
   const t0 = Date.now();
   const hash = await c.writeContract({ account, address, functionName, args, value, fees });
   console.log("tx", hash);
