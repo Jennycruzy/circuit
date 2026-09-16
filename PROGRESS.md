@@ -5,10 +5,16 @@
 - 2026-09-16: Tooling installed: genlayer CLI 0.39.2, genvm-linter 0.11.0,
   genlayer-test 0.29.2, genlayer-py 0.16.3 (venv `~/.venv-circuit`), Node 24 via nvm.
 
+- 2026-09-16: Hello-world deployed to studionet; first real nondet tx (web
+  fetch + LLM) reached `MAJORITY_AGREE` —
+  `0xb3fc3ea5c5f17a2bb6bf278a56d8ef75c466d07dde125cb57e461d4579f2543a`.
+  Open-ended LLM text failed consensus across 4 rounds first; closed enum
+  passed in 1 round. Details in `docs/verification.md`.
+
 ## Next
-- Deploy hello-world to studionet (gasless) AND Bradbury (needs faucet).
-- One real nondet tx (web fetch + LLM) — record hash.
-- Consensus spike with the re-run-and-compare-verdict validator.
+- Repeat hello-world on Bradbury once funded.
+- Full consensus spike: live changing page + enum verdict + confidence
+  tolerance, run ≥10 times; record agree/disagree rate.
 - Ghost→pause() spike — Bradbury only.
 - Start the replay corpus (`bench/`).
 
@@ -16,6 +22,13 @@
 - **Bradbury funding.** Faucet is Turnstile-gated; a human must claim 100 GEN at
   https://testnet-faucet.genlayer.foundation/ for deployer `0xbdeb496b84d74806d631a51141144ef3a3d4a146`. Everything EVM-related (DemoVault, pause) is
   Bradbury-only, so this gates §3.3 spike 3 and §6.
+
+## Findings that shape the design
+- Committees are heterogeneous (gpt-5.4, gemini, gemma, qwen, mistral, sonnet,
+  kimi, gpt-oss seen in one afternoon). Validators must compare closed enums /
+  bounded numbers only; free text is stored, never compared.
+- `genlayer trace` does not work on studionet; read
+  `eth_getTransactionByHash → consensus_history` directly.
 
 ## Doc divergences from SPEC.md
 1. **§5.3 non-comparative EP → comparative re-derivation.** Docs: non-comparative

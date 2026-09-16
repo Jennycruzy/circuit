@@ -158,3 +158,51 @@ Chains exported from `genlayer-js/chains`. Writes via `client.writeContract` +
 - Network set to `testnet-bradbury` (chainId 4221, rpc https://rpc-bradbury.genlayer.com,
   mainContract 0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D).
 - Balance: 0 GEN. Faucet claim pending (human, Turnstile).
+
+### Hello-world deploy + first non-deterministic transaction (studionet) — 2026-09-16 11:03–11:08 UTC
+
+Contract: `spikes/hello.py` — one `gl.nondet.web.get`, one `gl.nondet.exec_prompt`,
+custom validator via `gl.vm.run_nondet_unsafe` that re-runs the whole task and
+compares HTTP status + LLM label. Lint: `genvm-lint check` passes.
+
+**Attempt 1 — open-ended LLM output. FAILED consensus.**
+- Deploy tx `0xe90658be906aa0e08096450e47ca5e8f48c95f369d0197165a73576bcabb6fa0`,
+  contract `0x16523F6411472C18ae962d6129e16dE690f607a0`.
+- `probe("https://example.com/")` tx
+  `0x38ba14392e33719e5dd1a3f8d3c241c47fc1895916cba2aeec671e2f2749134a`
+  → `MAJORITY_DISAGREE`, 4 rounds, 3 leader rotations, final `UNDETERMINED`.
+  Prompt asked for "one lowercase word naming what the page is about".
+- Per round (from `consensus_history`): leader gpt-5.4 → `domain`;
+  leader gpt-oss → `example`; leader gemini → `documentation`; leader qwen →
+  `example`. Validators (gemini-3-flash, qwen, gpt-oss, gemma, sonnet, …)
+  disagreed each round. Every node executed successfully (`execution_result:
+  SUCCESS`, LLM tokens billed) — this was a genuine comparison failure, not an
+  infra error.
+- Finding: studionet committees are **heterogeneous across model families**.
+  Exact-match comparison of free-form LLM text will not reach consensus.
+
+**Attempt 2 — constrained enum. PASSED consensus in one round.**
+- Deploy tx `0x044d507cfcf487527e9b3f8aafa39325583cdb503adae5ef41512d3e0782cf43`,
+  contract `0xAEacE8a3c40b62acE94C9b5C7131D669fCd69351`.
+- Prompt: classify into one of `PLACEHOLDER | ERROR | NEWS | DOCS | OTHER`;
+  label outside the enum raises `[LLM_ERROR]`.
+- `probe("https://example.com/")` tx
+  `0xb3fc3ea5c5f17a2bb6bf278a56d8ef75c466d07dde125cb57e461d4579f2543a`
+  → `MAJORITY_AGREE`, 1 round, submitted 11:07:42, ACCEPTED by 11:07:53 (~11 s).
+  Leader mistral → `PLACEHOLDER`. Validators gpt-5.4 and claude-sonnet-4.6
+  each re-fetched and re-classified, stdout:
+  `validator: leader=PLACEHOLDER/200 mine=PLACEHOLDER/200`. Two validators idle.
+- `genlayer call … get` → `{last_status: 200, last_body_len: 559,
+  last_topic: 'PLACEHOLDER', last_url: 'https://example.com/', runs: 1}`.
+  State written on-chain from a real fetch and a real model inference.
+
+Consequences for Circuit (recorded in PROGRESS.md):
+1. Every LLM output that validators compare must be a closed enum or a bounded
+   number. `verdict` ∈ {NO_ACTION, ELEVATED, RESTRICT, PAUSE} compared exactly;
+   `confidence` compared with tolerance; `reasoning` stored but never compared.
+2. `genlayer trace` is unavailable on studionet (`gen_dbg_traceTransaction`
+   not found). Use `eth_getTransactionByHash` on the RPC and read
+   `consensus_history.consensus_results[*]` — it exposes each round's leader
+   model, `eq_outputs`, and each validator's vote and stdout. This is how the
+   equivalence iteration in `docs/equivalence.md` will be evidenced.
+3. Explorer: https://explorer-studio.genlayer.com/ (addresses above).
