@@ -32,7 +32,7 @@ async function read(address, functionName, args = [], attempts = 3) {
       return await client.readContract({ address, functionName, args });
     } catch (error) {
       last = error;
-      if (attempt + 1 < attempts) await pause(250 * 2 ** attempt);
+      if (attempt + 1 < attempts) await pause(750 * 2 ** attempt);
     }
   }
   throw last;
@@ -243,9 +243,9 @@ async function refresh() {
     const sel = document.querySelector("#detail h2")?.textContent.match(/#(\d+)/);
     if (sel) renderDetail(Number(sel[1])); else if (proposals.length) renderDetail(Number(proposals[proposals.length - 1].id));
   } catch (e) {
-    setSyncState("read failed — retrying", "warn");
-    $("net").innerHTML = `<span class="err">RPC unavailable: ${esc(e.shortMessage || e.message || e)}</span>`;
-    $("updated").textContent = "automatic retry in 20s";
+    setSyncState("live read delayed — retrying", "warn");
+    $("net").textContent = "Studio Next is busy — retrying automatically.";
+    $("updated").textContent = "retrying live read shortly";
     console.error(e);
   } finally {
     refreshInFlight = false;
