@@ -1,11 +1,11 @@
-# Circuit — judge handoff
+# Circuit — live proof handoff
 
 **One-line pitch:** Circuit is a GenLayer safety layer that reads governance
 intent before execution and measures vault outflow before it decides to pause.
 
 ## Start here
 
-**Live UI:** paste the Vercel URL here after the one-time manual deployment; steps are in [`README.md`](README.md#publish-the-ui).
+**Live UI:** [Open the published Circuit UI](https://circuit-lemon-five.vercel.app/).
 
 In 30 seconds:
 
@@ -56,4 +56,4 @@ python3 bench/replay.py --latency-s 120
 python3 bench/governance_score.py
 ```
 
-Release includes the receipt-index, judge-path, corpus, and submission polish changes. The final release commit is recorded in the repository log.
+Release includes the receipt-index, proof-path, corpus, and submission polish changes. The final release commit is recorded in the repository log.

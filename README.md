@@ -19,13 +19,13 @@ transaction in [`docs/verification.md`](docs/verification.md).
 
 ## Open the proof first
 
-**Public UI:** paste the Vercel URL here after the one-time manual deployment in [Publish the UI](#publish-the-ui).
+**Public UI:** [Open the live Circuit UI](https://circuit-lemon-five.vercel.app/).
 
-Circuit is easiest to judge by clicking the live proof, not by reading the
+Circuit is easiest to verify by clicking the live proof, not by reading the
 repository. It is a read-only page: no wallet, setup, or trust in a backend is
 required. It reads the three deployed contracts from the public Studio Next RPC.
 
-### The 30-second judge path
+### The 30-second proof path
 
 1. Leave **Current live set** selected. The vault card reads `paused=true`,
    `restricted=true`, with **0.025 GEN** still present.
@@ -38,7 +38,7 @@ required. It reads the three deployed contracts from the public Studio Next RPC.
 4. Follow the parent and child links in each receipt panel. The refusal beat
    (#0) has a finalized parent and no child; the action beat (#1) has both.
 
-[Launch the judge UI →](#publish-the-ui) · [submission walkthrough](SUBMISSION.md)
+[Open the live Circuit UI →](https://circuit-lemon-five.vercel.app/) · [submission walkthrough](SUBMISSION.md)
 
 The selector also keeps the earlier live deployments available as historical
 comparison sets. The public UI is deliberately evidence-first: raw on-chain
@@ -51,7 +51,7 @@ voter participation let a single wallet pass a proposal that seized the
 protocol's vaults, bypassing the governance delay. No abnormal outflow, no
 balance delta, no unusual transfer volume. Threat telemetry saw nothing
 because nothing had happened yet. Software integrity was intact because no
-code changed. The only way to catch it was to **read the proposal and judge
+code changed. The only way to catch it was to **read the proposal and assess
 its intent** — the one thing an AI-consensus contract can do and a
 deterministic contract cannot.
 
@@ -77,7 +77,7 @@ DECODE   decode calldata against the target's declared        deterministic
          undecodable bytes aimed at a privileged contract are a signal
 CONTEXT  turnout, proposer share and age of holdings,          deterministic
          privileged?, value at risk
-JUDGE    is this hostile? does the description match the      LLM, consensus
+ASSESS   is this hostile? does the description match the      LLM, consensus
          calldata? confidence, cited call, reasoning
 GATE     table in contracts/circuit.py                         deterministic
 ACT      Circuit → DemoGovernor.veto(id) on VETO only          deterministic
@@ -85,8 +85,8 @@ RECORD   full assessment stored on-chain, including NO_ACTION  deterministic
 ```
 
 Every input to the model is read from chain and is byte-identical for every
-validator; only the judgment is non-deterministic. Validators re-judge
-independently and must agree on `hostile` and `description_matches_calldata`
+validator; only the judgment is non-deterministic. Validators independently
+reassess and must agree on `hostile` and `description_matches_calldata`
 exactly and on `confidence` within a tolerance; reasoning is stored, never
 compared. See [`docs/equivalence.md`](docs/equivalence.md).
 
@@ -109,14 +109,14 @@ and exposed as clickable receipt links in the UI.
 | #1 | "Set protocol fee to 0.30% (30 bps)" | `DemoVault.set_fee_bps(30)` | leader gemini (90), gpt-5.4 (96), grok (90), gemini (100) | **NO_ACTION** — privileged, but honest |
 
 Four model families, two proposals, zero disagreements on the decision
-fields. Two is a demonstration, not a benchmark — see below.
+fields. Two live proposals are an early proof, not a benchmark — see below.
 
 ## The drain module
 
 ```
 MEASURE  vault balance and withdrawals since the window start → outflow bps   deterministic
 GATHER   fetch every evidence source; a failure is recorded, never substituted  non-det
-JUDGE    corroboration (STRONG?), exploit probability, cited fact, reasoning    LLM, consensus
+ASSESS   corroboration (STRONG?), exploit probability, cited fact, reasoning    LLM, consensus
 GATE     below threshold → NO_ACTION (ELEVATED if strong web signal)            deterministic
          above threshold → RESTRICT (probability < 80) or PAUSE (≥ 80)
          any source failure → no PAUSE; RESTRICT is the safe fallback
@@ -169,7 +169,7 @@ Circuit `0x23C06AD5844112915a261013AdE273e1207f9047`.
 It contains fresh governance veto and drain pause receipts; prior live sets remain
 available through the UI deployment selector. Explorer: https://explorer-studio-dev.genlayer.com.
 
-The demo governor's windows are 180 s voting / 300 s timelock so a demo fits
+The sample governor's windows are 180 s voting / 300 s timelock so a complete verification fits
 in minutes. Production windows are hours to days, which only widens Circuit's
 margin.
 
@@ -204,13 +204,13 @@ npx --yes vercel --prod --yes web
 The CLI command above is the cleanest path: it deploys `web/` as the project
 root. If you import the GitHub repository in the dashboard, set **Root
 Directory** to `web`, choose **Other**/static, leave build and install commands
-empty, and Deploy. The output URL is the judge link.
+empty, and Deploy. The output URL is the live UI link.
 
 If the Vercel project is already configured with the repository root, pull the
 latest `main` and redeploy; the root [`vercel.json`](vercel.json) routes the
 homepage and its static assets into `web/`. Do not set the output directory to
 `web` while also setting Root Directory to `web`—that produces an empty root
-and a Vercel 404. Then replace the public-UI line at the top of this README and
+and a Vercel 404. Then replace the live-UI link at the top of this README and
 in [`SUBMISSION.md`](SUBMISSION.md) with the generated URL.
 
 The frontend uses no private key and makes no on-chain writes; it only reads the

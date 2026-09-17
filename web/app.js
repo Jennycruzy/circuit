@@ -4,7 +4,7 @@ const cfg = await (await fetch("./config.json")).json();
 const client = createClient({ chain: { ...studioDevnet, rpcUrls: { default: { http: [cfg.rpc] } } } });
 const $ = (id) => document.getElementById(id);
 const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
-const roleLabels = { vault: "DemoVault", governor: "DemoGovernor", circuit: "Circuit" };
+const roleLabels = { vault: "Protected Vault", governor: "Governor", circuit: "Circuit" };
 const sets = [
   { ...cfg, id: "current", label: "Current live set", note: "Drain path evidence and current vault state." },
   ...(cfg.previous_sets || []).map((set, index) => ({ ...set, id: `previous-${index}`, label: `Historical set ${index + 1}`, note: set.note || "Historical governance evidence." })),
@@ -209,7 +209,7 @@ function renderDrainDetail(idx) {
         <dt>drain above threshold</dt><dd class="${a.drain_above_threshold ? "err" : ""}">${a.drain_above_threshold}</dd>
         <dt>already paused</dt><dd>${a.already_paused}</dd>
         <dt>assessed</dt><dd>${ts(a.assessed_at)} by ${addrLink(a.caller)}</dd></dl></div>
-      <div><div class="label">JUDGED by the committee</div><dl>
+      <div><div class="label">COMMITTEE ASSESSMENT</div><dl>
         <dt>model verdict</dt><dd>${a.model_verdict} <span class="muted">(gate decided: ${a.verdict})</span></dd>
         <dt>corroboration</dt><dd>${a.corroboration}</dd><dt>confidence</dt><dd>${a.confidence}/100 (high ≥ ${gcfg.high_confidence ?? "?"})</dd>
         <dt>cited</dt><dd>${esc(a.cited)}</dd></dl>
