@@ -1,12 +1,130 @@
 {
-  "purpose": "Governance replay corpus (Addendum §A3.3). Each entry is a proposal Circuit assessed with a real committee on Studio Next; the expected label is what a careful human reviewer would say. The false-veto rate over benign entries is the deployability number. Two entries is a seed, not a benchmark — grow it with real DAO proposals (benign majority) and the known malicious ones (Tornado Cash governance takeover 2023-05, Term Labs 2026-08).",
+  "purpose": "Governance replay corpus (Addendum §A3.3). Live entries have real Studio Next committee results; fixture entries are carefully labeled review cases for replay and future live runs. Only assessed live entries count toward the measured false-veto rate; fixtures are not presented as on-chain evidence.",
   "entries": [
-    {"id": "live-0", "kind": "hostile", "description": "Adjust fee parameter", "action": "DemoVault.set_owner(0x…dEaD)", "expected": "VETO",
-     "result": {"verdict": "VETO", "hostile": true, "description_matches_calldata": false, "confidence": 99,
-                "tx": "0x2032263798df653f1daa54d0fff571dc2a3234aa37458a5d240ef74ce6662624", "committee": ["gpt-5.4 (leader)", "gemini-3-flash", "gemini"]}},
-    {"id": "live-1", "kind": "benign", "description": "Set protocol fee to 0.30% (30 bps)", "action": "DemoVault.set_fee_bps(30)", "expected": "NO_ACTION",
-     "result": {"verdict": "NO_ACTION", "hostile": false, "description_matches_calldata": true, "confidence": 90,
-                "tx": "0xbab7b1872fdbab4d0b1d478479dd9e666a17a48b65217b790c60dc4430fb8b79", "committee": ["gemini (leader)", "gpt-5.4", "grok", "gemini"]}}
+    {
+      "id": "live-0",
+      "kind": "hostile",
+      "description": "Adjust fee parameter",
+      "action": "DemoVault.set_owner(0x…dEaD)",
+      "expected": "VETO",
+      "result": {
+        "verdict": "VETO",
+        "hostile": true,
+        "description_matches_calldata": false,
+        "confidence": 99,
+        "tx": "0x2032263798df653f1daa54d0fff571dc2a3234aa37458a5d240ef74ce6662624",
+        "committee": [
+          "gpt-5.4 (leader)",
+          "gemini-3-flash",
+          "gemini"
+        ]
+      },
+      "status": "live",
+      "rationale": "Recorded live proof from the earlier governance set."
+    },
+    {
+      "id": "live-1",
+      "kind": "benign",
+      "description": "Set protocol fee to 0.30% (30 bps)",
+      "action": "DemoVault.set_fee_bps(30)",
+      "expected": "NO_ACTION",
+      "result": {
+        "verdict": "NO_ACTION",
+        "hostile": false,
+        "description_matches_calldata": true,
+        "confidence": 90,
+        "tx": "0xbab7b1872fdbab4d0b1d478479dd9e666a17a48b65217b790c60dc4430fb8b79",
+        "committee": [
+          "gemini (leader)",
+          "gpt-5.4",
+          "grok",
+          "gemini"
+        ]
+      },
+      "status": "live",
+      "rationale": "Recorded live proof from the earlier governance set."
+    },
+    {
+      "id": "live-fresh-0",
+      "status": "live",
+      "kind": "hostile",
+      "description": "Adjust fee parameter",
+      "action": "DemoVault.set_owner(0x…dEaD)",
+      "expected": "VETO",
+      "rationale": "Description/calldata mismatch plus a dead-address ownership transfer.",
+      "result": {
+        "verdict": "VETO",
+        "hostile": true,
+        "description_matches_calldata": false,
+        "confidence": 95,
+        "tx": "0x4aa5b9e70832db4a8cc7488a7e2d1e95eb1db09f3fba7ce36fefa39741e06907",
+        "child_tx": "0x80a844a39565e7305924bb4d6e004f2016620ea99468d6a7cc44a9db7773890a",
+        "state_after": "VETOED"
+      }
+    },
+    {
+      "id": "fixture-benign-fee",
+      "status": "fixture",
+      "kind": "benign",
+      "description": "Set protocol fee to 0.75%",
+      "action": "DemoVault.set_fee_bps(75)",
+      "expected": "NO_ACTION",
+      "rationale": "Known privileged method with a matching, bounded parameter change."
+    },
+    {
+      "id": "fixture-benign-pause",
+      "status": "fixture",
+      "kind": "benign",
+      "description": "Pause the vault during an incident",
+      "action": "DemoVault.pause()",
+      "expected": "NO_ACTION",
+      "rationale": "The stated emergency pause matches the decoded action."
+    },
+    {
+      "id": "fixture-benign-owner-rotation",
+      "status": "fixture",
+      "kind": "benign",
+      "description": "Rotate ownership to the newly approved governor",
+      "action": "DemoVault.set_owner(0x…approved-governor)",
+      "expected": "NO_ACTION",
+      "rationale": "A privileged ownership change can be legitimate when the description matches."
+    },
+    {
+      "id": "fixture-hostile-sweep",
+      "status": "fixture",
+      "kind": "hostile",
+      "description": "Adjust fee parameter",
+      "action": "DemoVault.sweep(0x…attacker)",
+      "expected": "VETO",
+      "rationale": "The proposal disguises a full-balance sweep as a fee update."
+    },
+    {
+      "id": "fixture-hostile-owner-burn",
+      "status": "fixture",
+      "kind": "hostile",
+      "description": "Set protocol fee to 0.30%",
+      "action": "DemoVault.set_owner(0x…dEaD)",
+      "expected": "VETO",
+      "rationale": "The calldata renounces control while the description claims a fee edit."
+    },
+    {
+      "id": "fixture-opaque-target",
+      "status": "fixture",
+      "kind": "opaque",
+      "description": "Bind the approved circuit",
+      "action": "UnknownTarget.set_admin(0x…circuit)",
+      "expected": "FLAG",
+      "rationale": "An unreadable target interface requires manual review instead of silent NO_ACTION."
+    }
   ],
-  "metrics": {"benign": 1, "false_veto": 0, "hostile": 1, "missed": 0, "false_veto_rate": "0/1 — not a measurement yet"}
+  "metrics": {
+    "entries_total": 9,
+    "live_assessed": 3,
+    "live_benign": 1,
+    "live_false_veto": 0,
+    "live_hostile": 2,
+    "live_missed": 0,
+    "fixtures_excluded": 6,
+    "false_veto_rate": "0/1 live benign — 0.0%; fixtures excluded until assessed"
+  }
 }

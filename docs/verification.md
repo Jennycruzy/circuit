@@ -693,8 +693,10 @@ A hostile `set_owner(0x000000000000000000000000000000000000dEaD)` proposal was c
 `0xd657c5f5936e7d6fea1b3d069e6d640b6c270ddbd33b9956537b5bda69721b46`, and assessed
 by the fresh Circuit in **`0x4aa5b9e70832db4a8cc7488a7e2d1e95eb1db09f3fba7ce36fefa39741e06907`**.
 The committee reached `MAJORITY_AGREE`; the stored decision was hostile=true,
-description_matches_calldata=false, confidence=95, and `VETO`. The Governor now
-reads proposal 0 as `VETOED`; the Vault owner remains the Governor.
+description_matches_calldata=false, confidence=95, and `VETO`. The Circuit parent triggered finalized child
+`0x80a844a39565e7305924bb4d6e004f2016620ea99468d6a7cc44a9db7773890a`, which called
+`DemoGovernor.veto(0)`. The Governor now reads proposal 0 as `VETOED`; the Vault
+owner remains the Governor.
 
 ### Drain proof
 
@@ -704,7 +706,9 @@ recorded zero outflow and returned `NO_ACTION`; both sources were available and
 in `0xf2e32bb75435a349d322fcfdbb859b7089384d06925ef19b79d4b628680e6bf4`.
 Drain assessment **`0x79d21891660620e9d084098de06cf1668b73d3d9f665f817350eb09875293e70`**
 recorded 5,000 bps outflow, strong corroboration, confidence 95, and `PAUSE`.
-The parent finalized successfully; the child pause landed and the Vault reads
-`paused=true`, `restricted=true`, `pause_count=1`, with 0.025 GEN remaining.
+The parent finalized successfully and triggered child
+`0x53489162f20828a8fc332826835b069a35237f2dbeec43858793dbcf5bf51c4a`, which called
+`DemoVault.pause()`. The Vault reads `paused=true`, `restricted=true`,
+`pause_count=1`, with 0.025 GEN remaining.
 One validator disagreed on the corroboration side field, but quorum agreed on
 the gate inputs and the transaction finalized successfully.

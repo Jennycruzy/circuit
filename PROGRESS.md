@@ -55,9 +55,10 @@
 - Fresh Studio Next set: Vault `0xbbad9F3bFC25694c250F3334c7fa3c310f7cF90E`, Governor `0x867D7F43484efDfaE55e79e9A37D8C8546e7cf24`, Circuit `0x23C06AD5844112915a261013AdE273e1207f9047`.
 - Fresh live governance proof: hostile `set_owner` proposal assessed `VETO` and governor state became `VETOED`; vault owner stayed the Governor.
 - Fresh live drain proof: healthy-vault assessment returned `NO_ACTION`; after a controlled 50% withdrawal, assessment returned `PAUSE` and the child action left the vault paused/restricted.
-- Direct suite: 41 tests pass. UI pass is implemented locally: current/historical deployment switching, brief RPC retries, and conservative requested-vs-confirmed action labels. Contract-level child receipt indexing remains unimplemented.
+- Direct suite: 41 tests pass. Release UI is implemented: current/historical deployment switching, brief RPC retries, a 30-second judge path, exact finalized parent→child receipt links, and conservative requested-vs-confirmed action labels.
+- Release polish is complete: judge-first README, `SUBMISSION.md`, six labeled governance fixtures plus a live-only scorer, and a static Vercel deployment recipe. Vercel authentication/URL entry is the only manual handoff step.
 
-## Superseded status (2026-09-16 20:06 UTC)
+## Historical notes — superseded (2026-09-16)
 - Addendum A received. Order of work now follows §A4. Steps 1–5 of §A4 are
   done except DemoGovernor itself (next). The governance path has no web
   inputs, so it does not depend on spike 2; if spike 2 fails it is the primary
@@ -91,12 +92,11 @@
 - Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- Add on-chain or indexed parent-child receipt status if the demo needs confirmed child hashes in the UI.
-- Grow the governance corpus and measure false-veto rate; view/serve the UI publicly; add primary-source citations and finish the demo/submission.
-- Commit the completed local changes.
+- Publish `web/` to Vercel manually and paste the resulting URL into the README and `SUBMISSION.md`.
+- Optional: add more live benign proposals before claiming a statistically meaningful false-veto rate; the six fixtures are intentionally excluded.
 
 ## Blocked
-- No active blocker. Fresh deployment and live proofs are complete; remaining work is polish and packaging listed above.
+- No code blocker. Vercel authentication and the final public URL require the project owner’s manual account action.
 
 ## Findings that shape the design
 - Committees are heterogeneous (gpt-5.4, gemini, gemma, qwen, mistral, sonnet,
@@ -110,17 +110,17 @@
 - GenLayer CLI 0.40.0-rc.3 cannot submit fee-bearing txs to Studio Next;
   genlayer-js 2.0.0-rc.1 can. All network operations go through `scripts/`.
 
-## Doc divergences from SPEC.md
+## Doc divergences from SPEC.md (current and historical)
 0. **Network.** Spec assumes Bradbury (real GEN, EVM interop). Hackathon requires
    Studio Next (61997), where EVM interop is documented as not implemented.
    §6's Solidity/Ghost target is replaced here by an Intelligent-Contract vault
-   and IC-to-IC message path. The live pause action is not yet proven.
+   and IC-to-IC message path. The live pause action is proven on Studio Next (fresh set 2026-09-17).
 1. **§5.3 non-comparative EP → comparative re-derivation.** Docs: non-comparative
    is for open-ended outputs (summaries); for classification/safety/settlement
    decisions the validator must independently re-derive and compare the decision
    field. Validators should independently re-derive and compare bounded decision
-   fields; free-form reasoning should not be compared. Circuit is not implemented
-   yet, so this remains a design requirement rather than an executed result.
+   fields; free-form reasoning should not be compared. Circuit implements this
+   rule and the fresh live governance and drain transactions exercised it.
 2. **§5.2 step 5 ACT is not instantaneous.** IC messages are emitted only on
    `finalized`. The pause lands after the appeal window closes. Latency is to be
    measured and stated honestly in README.
@@ -131,7 +131,7 @@
 5. **Cross-contract reference API.** The current public messages page shows
    `gl.get_contract_at`, but the deployed v0.3.0 runtime has no such attribute.
    A real simulation failed with that exact runtime error. The source now uses
-   `gl.contract.get_at`; re-run live and proven.
+   `gl.contract.get_at`; the fresh live path is proven.
 6. **Addendum §A2.3 "Solidity governor".** Written as an Intelligent Contract on
    Studio; proposal calldata is GenVM calldata, not EVM ABI. The description-vs-
    calldata mismatch signal is unchanged.
@@ -144,7 +144,9 @@
    snapshot's datetime, so time-gated calls fail estimation; `scripts/write.cjs
    --force` / `--messages` submit them anyway (see verification log).
 
-## Audit review — 2026-09-16 14:35 UTC
+## Archived audit notes — 2026-09-16 (pre-release)
+
+These notes predate the fresh hardened deployment and are retained only as provenance; the current release status above supersedes them.
 - The Studio account was funded with `sim_fundAccount`; no Bradbury GEN was
   required for the deployed Studio work. The hello deployment and its
   web-fetch/LLM transaction are live evidence.

@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Live, read-only proof of Circuit governance veto and drain response on GenLayer Studio Next.">
+<meta name="color-scheme" content="dark">
 <title>Circuit — governance watch</title>
 <style>
   :root { --bg:#090b0f; --panel:#11161d; --panel-2:#151c25; --line:#26313d; --fg:#edf2f7; --dim:#8b98a7;
@@ -41,6 +43,16 @@
   .status.confirmed { color:var(--ok); border-color:#2e805f; background:#10251c }
   .status.none { color:var(--dim) }
   .action-note { display:block; margin-top:3px; font-size:11px }
+  .receipt { margin-top:12px; padding:11px 13px; border:1px solid #2e805f; border-radius:7px; background:#0d2119; line-height:1.7 }
+  .receipt.missing { border-color:var(--line); background:var(--panel-2) }
+  .receipt .label { margin-bottom:2px }
+  .receipt-note { margin-top:3px; font-size:12px }
+  .quick-proof { background:linear-gradient(110deg,#101d2a,#111820 70%); }
+  .proof-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px }
+  .proof-step { display:flex; gap:10px; align-items:flex-start; padding:10px; border:1px solid var(--line); border-radius:7px; background:#0d141c99 }
+  .proof-number { color:var(--accent); font:700 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace }
+  .proof-step b, .proof-step span:last-child { display:block }
+  .proof-step span:last-child { color:var(--dim); margin-top:3px; font-size:12px }
   .state-VETOED { color:var(--bad) } .state-EXECUTED { color:var(--ok) } .state-QUEUED { color:var(--warn) } .state-ACTIVE { color:var(--accent) }
   .side { display:grid; grid-template-columns:1fr 1fr; gap:12px }
   .side > div { border:1px solid var(--line); border-radius:6px; padding:12px; min-height:90px }
@@ -55,7 +67,7 @@
   .kv { display:flex; gap:24px; flex-wrap:wrap } .kv div span { color:var(--dim); display:block; font-size:12px }
   .reason { white-space:pre-wrap; border-left:2px solid var(--line); padding-left:12px; margin:8px 0 }
   .muted { color:var(--dim) } .err { color:var(--bad) }
-  @media (max-width:800px){ .side { grid-template-columns:1fr } .set-banner { display:block } .set-banner .signal { display:inline-block; margin-top:16px } main { padding:14px } header { padding:14px } table { display:block; overflow-x:auto; white-space:nowrap } }
+  @media (max-width:800px){ .side { grid-template-columns:1fr } .proof-grid { grid-template-columns:1fr 1fr } .set-banner { display:block } .set-banner .signal { display:inline-block; margin-top:16px } main { padding:14px } header { padding:14px } table { display:block; overflow-x:auto; white-space:nowrap } }
 </style>
 </head>
 <body>
@@ -71,7 +83,16 @@
 <main>
   <section id="set-banner" class="set-banner">
     <div><div class="eyebrow">active deployment</div><h2 id="set-title">Loading deployment…</h2><p id="set-note">Reading live contract state.</p></div>
-    <span id="set-state" class="signal">syncing…</span>
+    <span id="set-state" class="signal" aria-live="polite">syncing…</span>
+  </section>
+  <section class="quick-proof" aria-label="Thirty second judge path">
+    <div class="eyebrow">judge path · 30 seconds</div>
+    <div class="proof-grid">
+      <div class="proof-step"><span class="proof-number">01</span><div><b>Verify state</b><span>Vault reads paused + restricted.</span></div></div>
+      <div class="proof-step"><span class="proof-number">02</span><div><b>Click drain #1</b><span>50% outflow → PAUSE.</span></div></div>
+      <div class="proof-step"><span class="proof-number">03</span><div><b>Click proposal #0</b><span>“fee” text → owner transfer.</span></div></div>
+      <div class="proof-step"><span class="proof-number">04</span><div><b>Follow receipts</b><span>Parent → finalized child links.</span></div></div>
+    </div>
   </section>
   <section id="vault-panel"><h2>Protected vault — live status</h2><div id="vault" class="kv muted">loading…</div></section>
   <section><h2>Drain watch — assessments</h2>

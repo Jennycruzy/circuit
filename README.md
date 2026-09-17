@@ -17,6 +17,33 @@ GenLayer Intelligent Contract. It has two detection surfaces:
 Live on GenLayer **Studio Next** (chain 61997). Every claim below links to a
 transaction in [`docs/verification.md`](docs/verification.md).
 
+## Open the proof first
+
+**Public UI:** paste the Vercel URL here after the one-time manual deployment in [Publish the UI](#publish-the-ui).
+
+Circuit is easiest to judge by clicking the live proof, not by reading the
+repository. It is a read-only page: no wallet, setup, or trust in a backend is
+required. It reads the three deployed contracts from the public Studio Next RPC.
+
+### The 30-second judge path
+
+1. Leave **Current live set** selected. The vault card reads `paused=true`,
+   `restricted=true`, with **0.025 GEN** still present.
+2. Click drain assessment **#1**. It shows measured **50.0% outflow**, `2/2`
+   sources, `PAUSE`, and a **finalized child receipt** linking Circuit →
+   `DemoVault.pause()`.
+3. Click governance proposal **#0**. Compare “Adjust fee parameter” with the
+   decoded `DemoVault.set_owner(0x…dEaD)`: the mismatch is the reason for
+   `VETOED`.
+4. Follow the parent and child links in each receipt panel. The refusal beat
+   (#0) has a finalized parent and no child; the action beat (#1) has both.
+
+[Launch the judge UI →](#publish-the-ui) · [submission walkthrough](SUBMISSION.md)
+
+The selector also keeps the earlier live deployments available as historical
+comparison sets. The public UI is deliberately evidence-first: raw on-chain
+state, committee output, source failures, and exact action receipts stay visible.
+
 ## Why
 
 **Term Labs, August 2026.** Roughly $8.5M lost — not to a drain. Near-zero
@@ -63,7 +90,18 @@ independently and must agree on `hostile` and `description_matches_calldata`
 exactly and on `confidence` within a tolerance; reasoning is stored, never
 compared. See [`docs/equivalence.md`](docs/equivalence.md).
 
-### What happened on the live network (2026-09-16)
+### Fresh live proof — 2026-09-17
+
+| click | proof | result |
+|---|---|---|
+| governance #0 | “Adjust fee parameter” → `DemoVault.set_owner(0x…dEaD)` | **VETO**; governor state became `VETOED`; finalized child receipt indexed |
+| drain #0 | 0% measured outflow despite an exploit claim | **NO_ACTION**; bond slashed; no child emitted |
+| drain #1 | controlled 50% withdrawal, 2/2 sources available | **PAUSE**; vault became `paused=true`, `restricted=true`; finalized child receipt indexed |
+
+Exact parent and child hashes are listed in [`docs/verification.md`](docs/verification.md)
+and exposed as clickable receipt links in the UI.
+
+### Historical proof set — 2026-09-16
 
 | proposal | says | does | committee | verdict |
 |---|---|---|---|---|
@@ -90,7 +128,7 @@ RECORD   full receipt, always; NO_ACTION slashes half the caller's bond
 not a security tool.** On-chain measurement is primary; text is evidence,
 never a trigger. Text alone cannot reach RESTRICT or PAUSE by construction.
 
-### What happened on the live network (2026-09-16)
+### Historical proof set — 2026-09-16
 
 | beat | measured | evidence | committee | verdict |
 |---|---|---|---|---|
@@ -146,6 +184,7 @@ node scripts/write.cjs <circuit> post_bond '[]' 20000000000000000
 node scripts/write.cjs <circuit> assess '["demovault"]'
 node scripts/write.cjs <circuit> assess_proposal '[0]'
 python3 bench/replay.py --latency-s 120
+python3 bench/governance_score.py
 ```
 
 Network scripts use `genlayer-js 2.0.0-rc.1` directly (the CLI cannot submit
@@ -153,9 +192,32 @@ fee-bearing transactions to Studio Next). Studio-specific quirks — v0.3
 GenVM API, simulation clock lag on time-gated calls, message fee
 allocations — are documented in `docs/verification.md` and `PROGRESS.md`.
 
+## Publish the UI
+
+The app is a static deployment rooted at `web/`. The simplest manual CLI flow
+from the repository root is:
+
+```bash
+npx --yes vercel login          # complete the browser/device login once
+npx --yes vercel --prod --yes web
+```
+
+When Vercel asks for a project, choose your account, create/link the project,
+and keep `web/` as the deploy directory. The output URL is the judge link.
+For the dashboard flow, import this repository, set **Root Directory** to
+`web`, choose **Other**/static, leave build and install commands empty, and
+Deploy. Then replace the public-UI line at the top of this README and in
+[`SUBMISSION.md`](SUBMISSION.md) with the generated URL.
+
+The frontend uses no private key and makes no on-chain writes; it only reads the
+public Studio Next RPC. The included `web/vercel.json` adds conservative browser
+security headers.
+
 ## Not simulated
 
 No mock proposals, no mock verdicts, no mock vetoes. Every row in the UI is a
 `readContract` against the live contracts; every verdict is the stored
 output of a real validator committee; every veto is a real child
-transaction. Where something is not yet proven, the docs say so.
+transaction. Where something is not yet proven, the docs say so. The release also indexes
+finalized parent→child action receipts so “requested” is not confused with
+“confirmed.”

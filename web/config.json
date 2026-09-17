@@ -25,5 +25,43 @@
       "governor": "0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574",
       "circuit": "0x7Fc4784365a6c209753ae35740a89e03bd45a984"
     }
+  ],
+  "receipt_index": [
+    {
+      "deployment": "current",
+      "surface": "governance",
+      "index": 0,
+      "action": "veto",
+      "parent": "0x4aa5b9e70832db4a8cc7488a7e2d1e95eb1db09f3fba7ce36fefa39741e06907",
+      "parent_status": "FINALIZED",
+      "child": "0x80a844a39565e7305924bb4d6e004f2016620ea99468d6a7cc44a9db7773890a",
+      "child_status": "FINALIZED",
+      "target": "DemoGovernor",
+      "note": "Circuit veto message delivered after parent finality."
+    },
+    {
+      "deployment": "current",
+      "surface": "drain",
+      "index": 0,
+      "action": "none",
+      "parent": "0x07cf801f7a716cbbd942a5dbf700f2c16d17a1fa8d8a3a377e77f83375ba3efd",
+      "parent_status": "FINALIZED",
+      "child": null,
+      "child_status": null,
+      "target": null,
+      "note": "Healthy-vault refusal; no internal action message was emitted."
+    },
+    {
+      "deployment": "current",
+      "surface": "drain",
+      "index": 1,
+      "action": "pause",
+      "parent": "0x79d21891660620e9d084098de06cf1668b73d3d9f665f817350eb09875293e70",
+      "parent_status": "FINALIZED",
+      "child": "0x53489162f20828a8fc332826835b069a35237f2dbeec43858793dbcf5bf51c4a",
+      "child_status": "FINALIZED",
+      "target": "DemoVault",
+      "note": "Circuit pause message delivered after parent finality."
+    }
   ]
 }

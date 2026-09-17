@@ -10,6 +10,9 @@ const sets = [
   ...(cfg.previous_sets || []).map((set, index) => ({ ...set, id: `previous-${index}`, label: `Historical set ${index + 1}`, note: set.note || "Historical governance evidence." })),
 ];
 let activeSet = sets[0];
+const receiptIndex = cfg.receipt_index || [];
+const receiptFor = (surface, index) => receiptIndex.find((receipt) =>
+  (receipt.deployment || "current") === activeSet.id && receipt.surface === surface && Number(receipt.index) === Number(index));
 const sameAddress = (a, b) => String(a || "").toLowerCase() === String(b || "").toLowerCase();
 const activeAddress = (role) => activeSet[role];
 const name = (a) => {
@@ -19,6 +22,7 @@ const name = (a) => {
 const addrLink = (a) => `<a href="${cfg.explorer}/address/${a}" target="_blank" rel="noopener" title="${a}">${name(a)}</a>`;
 const ts = (t) => t ? new Date(t * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC" : "—";
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const txLink = (hash) => hash ? `<a href="${cfg.explorer}/tx/${encodeURIComponent(hash)}" target="_blank" rel="noopener" title="${esc(hash)}">${short(hash)}</a>` : "—";
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function read(address, functionName, args = [], attempts = 3) {
@@ -69,9 +73,20 @@ function setSyncState(text, kind = "") {
   el.className = `signal ${kind}`;
 }
 
+function receiptHtml(receipt) {
+  if (!receipt) return `<div class="receipt missing"><div class="label">ACTION RECEIPT</div><span class="muted">No child receipt indexed for this deployment.</span></div>`;
+  const parent = receipt.parent ? `<div><b>${esc(String(receipt.action || "action").toUpperCase())}</b> parent ${txLink(receipt.parent)} <span class="muted">${esc(receipt.parent_status || "indexed")}</span></div>` : "";
+  const child = receipt.child
+    ? `<div>child ${txLink(receipt.child)} <span class="muted">${esc(receipt.child_status || "FINALIZED")}</span> → ${esc(receipt.target || "target")}</div>`
+    : `<div class="muted">no internal action message emitted</div>`;
+  return `<div class="receipt"><div class="label">ACTION RECEIPT</div>${parent}${child}${receipt.note ? `<div class="muted receipt-note">${esc(receipt.note)}</div>` : ""}</div>`;
+}
+
 function actionLabel(a) {
+  const receipt = receiptFor("drain", a.index);
   if (a.action_taken === "pause" || a.action_taken === "restrict") {
-    return `<span class="status requested">${a.action_taken} requested</span><span class="muted action-note">child confirmation not indexed here</span>`;
+    if (receipt?.child) return `<span class="status confirmed">${a.action_taken} confirmed</span><span class="muted action-note">child ${txLink(receipt.child)}</span>`;
+    return `<span class="status requested">${a.action_taken} requested</span><span class="muted action-note">child receipt not indexed</span>`;
   }
   if (a.action_taken === "already_paused") return `<span class="status confirmed">already active</span>`;
   return `<span class="status none">none</span>`;
@@ -117,6 +132,7 @@ function renderDetail(pid) {
         <div class="muted" style="font-size:12px;margin-top:6px">raw: ${esc(p.calldata)}</div></div>
     </div>
     ${banner}
+    ${a ? receiptHtml(receiptFor("governance", a.index)) : ""}
     <div style="margin-top:14px" class="side">
       <div><div class="label">proposal (from ${addrLink(activeAddress("governor"))})</div><dl>
         <dt>proposer</dt><dd>${addrLink(p.proposer)} <span class="muted">(${(Number(p.proposer_power) * 100 / Number(p.total_power || 1)).toFixed(1)}% of power, held since ${ts(p.proposer_power_since)})</span></dd>
@@ -178,6 +194,7 @@ function renderDrainDetail(idx) {
   const a = drains.find((x) => Number(x.index) === idx); if (!a) return;
   const cls = a.verdict === "NO_ACTION" ? "ok" : a.verdict === "PAUSE" ? "bad" : "dim";
   $("drain-detail").innerHTML = `<div class="banner ${cls}"><b>#${idx} ${a.verdict}</b> — ${esc(a.gate_reason)} · action: ${actionLabel(a)}${a.bond_slashed > 0 ? " · bond slashed " + gen(a.bond_slashed) : ""}</div>
+    ${receiptHtml(receiptFor("drain", idx))}
     <div class="side" style="margin-top:10px">
       <div><div class="label">MEASURED on-chain (authoritative)</div><dl>
         <dt>balance now</dt><dd>${gen(a.balance)}</dd><dt>balance at window start</dt><dd>${gen(a.baseline_balance)}</dd>
