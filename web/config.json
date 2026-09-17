@@ -18,6 +18,10 @@
     "circuit": "0xf95A14c88393cE8e9603366A17F9282DC42e56A8",
     "protocol_id": "production-vault"
   },
+  "operator_receipts": [
+    {"title": "Protocol registered", "tx": "0xd2b98a011b4ae9128d39018eb4634e5bd3c8065b6984a3c37e592d7e7a617a7d", "note": "production-vault registry entry finalized"},
+    {"title": "Assessment bond posted", "tx": "0x9b07f9caae86190b232680092d0311553e3b40c9c02ede578625bf5a525f6612", "note": "deployer bond finalized at 0.0100 GEN"}
+  ],
   "previous_sets": [
     {
       "note": "previous drain proof set; paused after the 50% live drain (2026-09-16)",

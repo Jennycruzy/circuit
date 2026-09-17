@@ -160,5 +160,27 @@ if (window.ethereum && window.ethereum.on) {
   window.ethereum.on("accountsChanged", (xs) => { account = xs && xs[0] ? xs[0] : ""; signer = account ? createClient({ chain, account, provider: window.ethereum }) : null; syncWallet().catch((e) => log("Wallet state error", esc(e && e.message ? e.message : e), "error")); });
   window.ethereum.on("chainChanged", () => syncWallet().catch((e) => log("Network state error", esc(e && e.message ? e.message : e), "error")));
 }
+function renderIndexedReceipts() {
+  const receipts = cfg.operator_receipts || [];
+  if (!receipts.length) return;
+  const stream = $("activity-log");
+  stream.innerHTML = "";
+  for (const receipt of receipts) {
+    const e = document.createElement("div");
+    e.className = "log-entry success";
+    const top = document.createElement("div");
+    top.className = "log-entry-top";
+    const title = document.createElement("strong");
+    title.textContent = receipt.title;
+    const stamp = document.createElement("span");
+    stamp.textContent = "indexed on Studio Next";
+    top.append(title, stamp);
+    const p = document.createElement("p");
+    p.textContent = receipt.note + " · " + receipt.tx.slice(0, 10) + "… · SUCCESS";
+    e.append(top, p);
+    stream.append(e);
+  }
+}
+renderIndexedReceipts();
 $("circuit-address").textContent = compact(operator.circuit);
 refresh();
