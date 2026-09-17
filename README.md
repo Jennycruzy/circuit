@@ -81,7 +81,7 @@ GATHER   fetch every evidence source; a failure is recorded, never substituted  
 JUDGE    corroboration (STRONG?), exploit probability, cited fact, reasoning    LLM, consensus
 GATE     below threshold → NO_ACTION (ELEVATED if strong web signal)            deterministic
          above threshold → RESTRICT (probability < 80) or PAUSE (≥ 80)
-         every source failed → capped at RESTRICT
+         any source failure → no PAUSE; RESTRICT is the safe fallback
 ACT      Circuit → DemoVault.restrict() / pause()                                deterministic
 RECORD   full receipt, always; NO_ACTION slashes half the caller's bond
 ```
@@ -125,12 +125,11 @@ Source: Decurity Research, https://rescue-window.decurity.io.
 | `contracts/demo_governor.py` | minimal timelocked governor; `veto()` callable only by the bound Circuit address; `execute()` reverts when vetoed |
 | `contracts/demo_vault.py` | the protected protocol; governor is `owner` (params, ownership, sweep), Circuit is `controller` (pause) |
 
-Live set (drain beats): vault `0x8E30363F60cc25dD98974523C3ed8b491995EdE8` ·
-governor `0xe999Ec1E22D008aB09975317385A65E4A0a4D454` ·
-Circuit `0xdd09958f03781a558c7b449f9d4eE277a9CD1E20`.
-Governance beats were run on the previous set: vault `0x93A35A1a…0977`,
-governor `0xad2dd244…5574`, Circuit `0x7Fc47843…a984`.
-Explorer: https://explorer-studio-dev.genlayer.com.
+Current hardened set (deployed and exercised 2026-09-17): vault `0xbbad9F3bFC25694c250F3334c7fa3c310f7cF90E` ·
+governor `0x867D7F43484efDfaE55e79e9A37D8C8546e7cf24` ·
+Circuit `0x23C06AD5844112915a261013AdE273e1207f9047`.
+It contains fresh governance veto and drain pause receipts; prior live sets remain
+available through the UI deployment selector. Explorer: https://explorer-studio-dev.genlayer.com.
 
 The demo governor's windows are 180 s voting / 300 s timelock so a demo fits
 in minutes. Production windows are hours to days, which only widens Circuit's
@@ -140,7 +139,7 @@ margin.
 
 ```
 export PATH=$HOME/.nvm/versions/node/v24.21.0/bin:$PATH
-npm test                                  # 27 direct-mode contract tests
+npm test                                  # 41 direct-mode contract tests
 npm run serve:web                         # governance watch UI on :8080
 node scripts/read.cjs  <addr> get_proposals
 node scripts/write.cjs <circuit> post_bond '[]' 20000000000000000

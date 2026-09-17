@@ -664,3 +664,47 @@ corroboration. No human in the loop.
 Trigger submission → pause: **119 s** (assess finality ~60 s + child
 message ~32 s + queueing). `bench/replay.py --latency-s 120` is the honest
 figure; still inside the 5-minute mark.
+
+
+## Fresh hardened set — 2026-09-17
+
+The local hardening was deployed and exercised on a fresh Studio Next set:
+
+- Vault **`0xbbad9F3bFC25694c250F3334c7fa3c310f7cF90E`**, deploy tx
+  `0x13193a36fd9da4a3b9c62dbc3b8257a48c53e24f95f7dd99f32bfc6507cbe92c`.
+- Governor **`0x867D7F43484efDfaE55e79e9A37D8C8546e7cf24`**, deploy tx
+  `0x8a3d8b69066dd6b9ccff8af18f5d11605e7f61b8a08646f7c4e1be998a16d807`.
+- Circuit **`0x23C06AD5844112915a261013AdE273e1207f9047`**, deploy tx
+  `0x1aa2ec828d252d9a8d43adc7fbba3a637c92b5d0b1715b6faf680a7be3be47d0`.
+
+Wiring and setup finalized: Governor binding `0x2e587e47ed7736447914b52adae3daf6cda8fb682e2afcfadd3f1dac6633082a`,
+vault owner `0x06f12cccaabf98a2098cb585703a4d20b5aecb6ea0bc0480f7d03c196c277fbb`,
+vault controller `0xce3f6f72500e48a4279c30df76c1eed4acec0e2d8e1b0af72446eaf01e687fb5`,
+70/30 voting power `0x0a153bcd4a49b6180ae6efb3c585acbda3dcc201b5378aedd639b0f89fc60228` +
+`0x9a2cccc3370d4eba504434615247f18548d2c887d5217643cfca6cbd23344af7`,
+0.05 GEN deposit `0x8a9df93a03fc9199f45f321bd69dc6c469f6256d44041a99923768cbfba33ae4`,
+0.02 GEN bond `0xbfaece570063026adc532c6ddd4f9cfc344b70e47612409cf3df425cac1dd902`,
+and `register_protocol` `0x978a543016e74884ac844c7e124aa698bb80eb16064512477e4ea15ee0542ac6`.
+
+### Governance proof
+
+A hostile `set_owner(0x000000000000000000000000000000000000dEaD)` proposal was created in
+`0x74287a1236ddd7280afde2939b3da730a171ce325c7cd87fd4e67a1c5ca81ec8`, voted in
+`0xd657c5f5936e7d6fea1b3d069e6d640b6c270ddbd33b9956537b5bda69721b46`, and assessed
+by the fresh Circuit in **`0x4aa5b9e70832db4a8cc7488a7e2d1e95eb1db09f3fba7ce36fefa39741e06907`**.
+The committee reached `MAJORITY_AGREE`; the stored decision was hostile=true,
+description_matches_calldata=false, confidence=95, and `VETO`. The Governor now
+reads proposal 0 as `VETOED`; the Vault owner remains the Governor.
+
+### Drain proof
+
+Healthy-vault refusal assessment **`0x07cf801f7a716cbbd942a5dbf700f2c16d17a1fa8d8a3a377e77f83375ba3efd`**
+recorded zero outflow and returned `NO_ACTION`; both sources were available and
+0.005 GEN of the bond was slashed. The controlled 0.025 GEN withdrawal finalized
+in `0xf2e32bb75435a349d322fcfdbb859b7089384d06925ef19b79d4b628680e6bf4`.
+Drain assessment **`0x79d21891660620e9d084098de06cf1668b73d3d9f665f817350eb09875293e70`**
+recorded 5,000 bps outflow, strong corroboration, confidence 95, and `PAUSE`.
+The parent finalized successfully; the child pause landed and the Vault reads
+`paused=true`, `restricted=true`, `pause_count=1`, with 0.025 GEN remaining.
+One validator disagreed on the corroboration side field, but quorum agreed on
+the gate inputs and the transaction finalized successfully.

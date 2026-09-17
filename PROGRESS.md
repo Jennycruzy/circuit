@@ -50,16 +50,12 @@
   trigger→pause). First equivalence failure observed and fixed (v2: compare
   gate inputs only). Set 5 addresses in verification log. 39 direct tests.
 
-## Current status (2026-09-16 22:12 UTC)
-- Live demo set: vault `0x93A35A1a192E2A67e0816d178D8b14ed96590977`,
-  governor `0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574`, Circuit
-  `0x7Fc4784365a6c209753ae35740a89e03bd45a984`. Circuit is also the vault's
-  `controller` (pause authority) — the drain path can bind to this set.
-- §A4 steps 1–5, 7, 8 (governance half), 9 (governance surfaces), 10 (drain
-  corpus + governance seed), and the README of 12 are done. Step 6 (`assess`,
-  drain path, main-spec §5.2) needs the main spec text in-session; not
-  started. Step 11's real drain depends on 6. Frontend (`web/`) is built and
-  its reads verified from Node, not yet viewed in a browser (none here).
+## Current status (2026-09-17 fresh hardened set)
+- Local hardening is deployed: opaque governance targets are explicitly FLAGged; watch registration rejects zero windows, empty or non-HTTP evidence lists, incomplete targets, and zero-balance baselines; partial or total source failures cannot produce PAUSE; validators compare source-availability class.
+- Fresh Studio Next set: Vault `0xbbad9F3bFC25694c250F3334c7fa3c310f7cF90E`, Governor `0x867D7F43484efDfaE55e79e9A37D8C8546e7cf24`, Circuit `0x23C06AD5844112915a261013AdE273e1207f9047`.
+- Fresh live governance proof: hostile `set_owner` proposal assessed `VETO` and governor state became `VETOED`; vault owner stayed the Governor.
+- Fresh live drain proof: healthy-vault assessment returned `NO_ACTION`; after a controlled 50% withdrawal, assessment returned `PAUSE` and the child action left the vault paused/restricted.
+- Direct suite: 41 tests pass. UI pass is implemented locally: current/historical deployment switching, brief RPC retries, and conservative requested-vs-confirmed action labels. Contract-level child receipt indexing remains unimplemented.
 
 ## Superseded status (2026-09-16 20:06 UTC)
 - Addendum A received. Order of work now follows §A4. Steps 1–5 of §A4 are
@@ -95,28 +91,12 @@
 - Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- Governance beats 2–3 on set 5 (the governor there has not yet seen a
-  proposal); sets 3 and 5 both stay in the README as evidence.
-- Frontend: drain surface written (`web/`), not yet viewed in a browser;
-  the trigger button (§7.2) requires a wallet flow — not built.
-- Grow `bench/governance_corpus.json` past its 2-entry seed (benign DAO
-  proposals + known malicious ones) and measure the false-veto rate.
-- Open the UI in a browser (`npm run serve:web`) and check the side-by-side.
-- Second wallet for the demo's hostile proposer (currently the deployer).
-- Primary-source citations for TMXTribe and Term Labs (marked TODO in
-  `bench/drain_cases.json`).
-- Demo video; verification log tidy; submission.
-- Full consensus spike: live changing page + enum verdict + confidence
-  tolerance, run ≥10 times; record agree/disagree rate.
-- Ghost→pause() spike — Bradbury only.
-- Start the replay corpus (`bench/`).
+- Add on-chain or indexed parent-child receipt status if the demo needs confirmed child hashes in the UI.
+- Grow the governance corpus and measure false-veto rate; view/serve the UI publicly; add primary-source citations and finish the demo/submission.
+- Commit the completed local changes.
 
 ## Blocked
-- Studio does not implement calls to EVM contracts. The Solidity/Ghost path is
-  replaced by the proven IC-to-IC message path; a Bradbury port would swap the
-  proxy type only.
-- The Circuit contract, DemoGovernor, frontend, and replay benchmark have not
-  been created yet.
+- No active blocker. Fresh deployment and live proofs are complete; remaining work is polish and packaging listed above.
 
 ## Findings that shape the design
 - Committees are heterogeneous (gpt-5.4, gemini, gemma, qwen, mistral, sonnet,

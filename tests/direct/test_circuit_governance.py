@@ -137,6 +137,22 @@ def test_unprivileged_target_is_no_action_without_llm_dependence(chain, direct_v
     assert world["circuit"].latest_assessment(pid)["gate_reason"] == "no privileged target"
 
 
+def test_unknown_target_interface_is_flagged_without_llm(direct_vm, world):
+    # DemoGovernor has no declared privileged interface. It must not silently
+    # become a NO_ACTION result.
+    direct_vm.sender = world["alice"]
+    pid = world["gov"].propose(
+        world["gov"].address,
+        encode_call("set_circuit", address_text(create_address("replacement"))),
+        0,
+        "Bind the circuit",
+    )
+    world["gov"].vote(pid, True)
+    assert world["circuit"].assess_proposal(pid) == "FLAG"
+    a = world["circuit"].latest_assessment(pid)
+    assert not a["known_interface"] and not a["privileged"]
+
+
 def test_undecodable_calldata_is_privileged_signal(chain, direct_vm, world):
     pid = propose(direct_vm, world, None, b"\xde\xad\xbe\xef", description="Routine maintenance", voters=[world["alice"]])
     direct_vm.mock_llm(r"Routine maintenance", judgment(True, False, 85))

@@ -26,6 +26,7 @@ ELEVATED, RESTRICT, PAUSE = "ELEVATED", "RESTRICT", "PAUSE"
 DRAIN_VERDICTS = (NO_ACTION, ELEVATED, RESTRICT, PAUSE)
 CORROBORATION = ("NONE", "WEAK", "STRONG")
 SOURCE_CATEGORIES = ("NO_CLAIM", "EXPLOIT_CLAIM", "PAUSE_CLAIM", "UNRELATED", "SOURCE_FAILED")
+SOURCE_FAILURE_STATES = ("NONE", "PARTIAL", "ALL")
 CONFIDENCE_TOLERANCE = 30       # validators accept the leader's confidence within this band
 UNDECODABLE = "<undecodable>"
 BOND = 10_000_000_000_000_000   # 0.01 GEN; the mechanism matters more than the number
@@ -144,7 +145,7 @@ class Circuit(gl.contract.Contract):
     treasury: u256              # slashed bonds
 
     def __init__(self, governor: str, high_confidence: u256, quorum_threshold_bps: u256):
-        if high_confidence > 100 or quorum_threshold_bps > 10_000:
+        if high_confidence == 0 or high_confidence > 100 or quorum_threshold_bps > 10_000:
             raise gl.vm.UserError("bad thresholds")
         self.deployer = gl.message.sender_address
         self.governor = Address(governor)
@@ -239,7 +240,14 @@ class Circuit(gl.contract.Contract):
                 decodable = False
         except Exception:
             decodable = False
-        iface = target.view(catch_vm_error=True).privileged_methods()
+        # A target that cannot answer this view is opaque. Do not turn that
+        # failure into an implicit "unprivileged" result: the proposal still
+        # needs an operator-visible decision, but Circuit cannot safely veto it
+        # without knowing the target's surface.
+        try:
+            iface = target.view(catch_vm_error=True).privileged_methods()
+        except Exception:
+            iface = None
         known_interface = isinstance(iface, list)
         privileged_methods = [str(m) for m in iface] if known_interface else []
         # An undecodable or unknown call aimed at a contract with a privileged
@@ -334,7 +342,19 @@ class Circuit(gl.contract.Contract):
                   f"mine hostile={mine['hostile']} matches={mine['matches']} conf={mine['confidence']} -> {same}")
             return same
 
-        j = gl.vm.run_nondet_default(leader_fn, validator_fn)
+        if not known_interface:
+            # An opaque target is a deterministic review failure. Avoid
+            # spending a nondeterministic round on a call whose safety surface
+            # is unknown; the explicit FLAG below is the only safe outcome.
+            j = {
+                "hostile": False,
+                "matches": False,
+                "confidence": 0,
+                "cited_call": "",
+                "reasoning": "target did not expose a readable privileged interface",
+            }
+        else:
+            j = gl.vm.run_nondet_default(leader_fn, validator_fn)
         hostile = bool(j["hostile"])
         matches = bool(j["matches"])
         confidence = int(j["confidence"])
@@ -344,6 +364,8 @@ class Circuit(gl.contract.Contract):
         pending = p["state"] in ("ACTIVE", "QUEUED")
         if not pending:
             verdict, reason = NO_ACTION, f"proposal is {p['state']}; nothing to protect"
+        elif not known_interface:
+            verdict, reason = FLAG, "target privileged interface unavailable; manual review required"
         elif not privileged:
             verdict, reason = NO_ACTION, "no privileged target"
         elif not hostile:
@@ -442,18 +464,43 @@ class Circuit(gl.contract.Contract):
             raise gl.vm.UserError("protocol already registered")
         if drain_threshold_bps == 0 or drain_threshold_bps > 10_000:
             raise gl.vm.UserError("bad threshold")
-        srcs = json.loads(evidence_sources)
-        if not isinstance(srcs, list) or not all(isinstance(u, str) for u in srcs):
+        if window_s == 0:
+            raise gl.vm.UserError("window must be positive")
+        try:
+            srcs = json.loads(evidence_sources)
+        except Exception:
             raise gl.vm.UserError("evidence_sources must be a JSON list of URLs")
+        if (not isinstance(srcs, list) or not srcs
+                or not all(isinstance(u, str) and u.strip() for u in srcs)
+                or not all(u.startswith("http://") or u.startswith("https://") for u in srcs)):
+            raise gl.vm.UserError("evidence_sources must be a non-empty HTTP(S) URL list")
+        if not isinstance(criteria, str) or not criteria.strip():
+            raise gl.vm.UserError("criteria must be non-empty")
         t = Address(target)
-        state = gl.contract.get_at(t).view().get_state()     # must be readable now, or we cannot watch it
+        target_contract = gl.contract.get_at(t)
+        try:
+            state = target_contract.view().get_state()       # must be readable now, or we cannot watch it
+            iface = target_contract.view(catch_vm_error=True).privileged_methods()
+        except Exception:
+            raise gl.vm.UserError("target must expose get_state and privileged_methods")
+        if not isinstance(state, dict) or not all(k in state for k in ("balance", "total_withdrawals", "paused", "restricted")):
+            raise gl.vm.UserError("target get_state is incomplete")
+        methods = [str(m) for m in iface] if isinstance(iface, list) else []
+        if "pause" not in methods or "restrict" not in methods:
+            raise gl.vm.UserError("target must expose pause and restrict")
+        baseline_balance = int(state["balance"])
+        baseline_withdrawals = int(state["total_withdrawals"])
+        if baseline_balance <= 0:
+            raise gl.vm.UserError("target balance must be positive")
+        if baseline_withdrawals < 0:
+            raise gl.vm.UserError("target withdrawals cannot be negative")
         p = self.watchlist.get_or_insert_default(protocol_id)
         p.protocol_id = protocol_id
         p.target = t
         p.drain_threshold_bps = drain_threshold_bps
         p.window_s = window_s
-        p.baseline_balance = int(state["balance"])
-        p.baseline_withdrawals = int(state["total_withdrawals"])
+        p.baseline_balance = baseline_balance
+        p.baseline_withdrawals = baseline_withdrawals
         p.baseline_at = _now()
         p.evidence_sources = evidence_sources
         p.criteria = criteria
@@ -517,6 +564,7 @@ class Circuit(gl.contract.Contract):
         outflow = max(0, withdrawals - int(p.baseline_withdrawals))
         outflow_bps = outflow * 10_000 // baseline_balance if baseline_balance > 0 else 0
         drain_above = outflow_bps >= int(p.drain_threshold_bps)
+        elapsed = max(0, now - int(p.baseline_at))
         facts = {
             "protocol_id": protocol_id,
             "target": str(p.target),
@@ -527,7 +575,7 @@ class Circuit(gl.contract.Contract):
             "drain_threshold_bps": int(p.drain_threshold_bps),
             "drain_above_threshold": drain_above,
             "window_seconds": int(p.window_s),
-            "seconds_since_window_start": now - int(p.baseline_at),
+            "seconds_since_window_start": elapsed,
             "already_paused": already_paused,
         }
         facts_json = json.dumps(facts, sort_keys=True)
@@ -570,6 +618,7 @@ class Circuit(gl.contract.Contract):
         def leader_fn():
             evidence = [fetch_one(u) for u in sources]
             failed = [e["url"] for e in evidence if e["category"] == "SOURCE_FAILED"]
+            source_failure = "ALL" if len(failed) == len(sources) else "PARTIAL" if failed else "NONE"
             prompt = (
                 "You are the judgment step of an autonomous circuit breaker protecting a DeFi "
                 "vault. You are given MEASURED on-chain facts (authoritative — they cannot be "
@@ -604,7 +653,8 @@ class Circuit(gl.contract.Contract):
             if not isinstance(conf, int) or isinstance(conf, bool) or conf < 0 or conf > 100:
                 raise gl.vm.UserError("[LLM_ERROR] exploit_probability outside 0-100")
             return {
-                "evidence": evidence, "failed": failed, "corroboration": corr, "model_verdict": mv,
+                "evidence": evidence, "failed": failed, "source_failure": source_failure,
+                "corroboration": corr, "model_verdict": mv,
                 "confidence": conf, "cited": str(out.get("cited", ""))[:400], "reasoning": str(out.get("reasoning", ""))[:800],
             }
 
@@ -618,23 +668,25 @@ class Circuit(gl.contract.Contract):
             #   - is exploit probability at/above the high threshold
             #   - and the probability within a band, so 0 vs 79 cannot pass
             # The model's own verdict is recorded but not compared (the gate,
-            # not the model, decides). Source reachability may differ between
-            # nodes and is recorded from the leader.
+            # not the model, decides). Source availability is a gate input and
+            # must agree between leader and validator.
             lc, mc = int(l["confidence"]), mine["confidence"]
             high = int(self.high_confidence)
             same = (
-                (l["corroboration"] == "STRONG") == (mine["corroboration"] == "STRONG")
+                l["source_failure"] == mine["source_failure"]
+                and (l["corroboration"] == "STRONG") == (mine["corroboration"] == "STRONG")
                 and (lc >= high) == (mc >= high)
                 and abs(lc - mc) <= CONFIDENCE_TOLERANCE
             )
-            print(f"validator: leader corr={l['corroboration']} v={l['model_verdict']} conf={l['confidence']} failed={len(l['failed'])} | "
-                  f"mine corr={mine['corroboration']} v={mine['model_verdict']} conf={mine['confidence']} failed={len(mine['failed'])} -> {same}")
+            print(f"validator: leader corr={l['corroboration']} v={l['model_verdict']} conf={l['confidence']} failed={len(l['failed'])} ({l['source_failure']}) | "
+                  f"mine corr={mine['corroboration']} v={mine['model_verdict']} conf={mine['confidence']} failed={len(mine['failed'])} ({mine['source_failure']}) -> {same}")
             return same
 
         j = gl.vm.run_nondet_default(leader_fn, validator_fn)
         corroboration = str(j["corroboration"])
         confidence = int(j["confidence"])
         failed = list(j["failed"])
+        source_failure = str(j["source_failure"])
         sources_ok = len(sources) - len(failed)
 
         # 4. GATE — deterministic; the model's verdict is recorded but the
@@ -647,10 +699,14 @@ class Circuit(gl.contract.Contract):
                 verdict, reason = NO_ACTION, "outflow below threshold and no strong corroboration"
         elif not high:
             verdict, reason = RESTRICT, f"outflow above threshold; confidence {confidence} below {int(self.high_confidence)}"
+        elif source_failure != "NONE":
+            if source_failure == "ALL":
+                reason = "every evidence source failed; verdict capped at RESTRICT"
+            else:
+                reason = "one or more evidence sources failed; PAUSE requires all sources"
+            verdict = RESTRICT
         else:
             verdict, reason = PAUSE, f"outflow above threshold at high confidence ({confidence})"
-        if verdict == PAUSE and len(sources) > 0 and sources_ok == 0:
-            verdict, reason = RESTRICT, "every evidence source failed; verdict capped at RESTRICT"
 
         # 5. ACT — only the gate reaches the target.
         action = "none"
@@ -689,7 +745,7 @@ class Circuit(gl.contract.Contract):
         a.gate_reason = reason
         a.action_taken = action
         a.bond_slashed = slashed
-        if now - int(p.baseline_at) >= int(p.window_s):
+        if elapsed >= int(p.window_s) and balance > 0:
             p.baseline_balance = balance
             p.baseline_withdrawals = withdrawals
             p.baseline_at = now

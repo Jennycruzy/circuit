@@ -80,6 +80,21 @@ def test_register_measures_baseline_and_is_deployer_only(direct_vm, world):
         world["circuit"].register_protocol("demovault", world["vault"].address, 2000, 600, "[]", "c")
 
 
+def test_register_rejects_dead_window_empty_sources_and_empty_baseline(chain, direct_vm, world, direct_deploy):
+    direct_vm.sender = world["owner"]
+    with direct_vm.expect_revert("window must be positive"):
+        world["circuit"].register_protocol(
+            "zero-window", world["vault"].address, 2000, 0, json.dumps([FEED]), "c")
+    with direct_vm.expect_revert("non-empty"):
+        world["circuit"].register_protocol("no-sources", world["vault"].address, 2000, 600, "[]", "c")
+
+    empty_vault = chain.deploy(direct_deploy, CONTRACTS / "demo_vault.py", address_text(world["owner"]))
+    direct_vm._balances[empty_vault.addr] = 0
+    with direct_vm.expect_revert("balance must be positive"):
+        world["circuit"].register_protocol(
+            "empty-vault", empty_vault.address, 2000, 600, json.dumps([FEED]), "c")
+
+
 def test_refusal_manufactured_panic_is_no_action_and_slashes(chain, direct_vm, world):
     # Beat 1: healthy vault, a source screaming "drained". Text alone never acts.
     mock_sources(direct_vm, panic_cat="EXPLOIT_CLAIM")
@@ -153,9 +168,9 @@ def test_one_source_failed_is_recorded_not_hidden(chain, direct_vm, world):
     direct_vm.mock_web(r"panic\.example", {"status": 500, "body": ""})
     direct_vm.mock_llm(r"judgment step", judge("STRONG", "PAUSE", 90))
     direct_vm.sender = world["alice"]
-    assert world["circuit"].assess("demovault") == "PAUSE"
+    assert world["circuit"].assess("demovault") == "RESTRICT"
     a = world["circuit"].get_drain_assessments()[-1]
-    assert a["sources_failed"] == [PANIC] and a["sources_ok"] == 1
+    assert a["sources_failed"] == [PANIC] and a["sources_ok"] == 1 and a["action_taken"] == "restrict"
 
 
 def test_already_paused_records_without_duplicate_action(chain, direct_vm, world):
@@ -230,10 +245,10 @@ def test_validator_compares_gate_inputs_only(direct_vm, world):
     assert validator_says("STRONG", "RESTRICT", 85) is True     # model verdict differs: not a gate input
     assert validator_says("STRONG", "PAUSE", 79) is False        # crosses the high threshold (80)
     assert validator_says("WEAK", "PAUSE", 90) is False          # STRONG vs not-STRONG
-    # a validator whose own sources fail still compares the judgment, not reachability
+    # a validator whose own sources fail must reject the leader's different gate input
     direct_vm.clear_mocks(); direct_vm.mock_web(r"example", {"status": 503, "body": ""})
     direct_vm.mock_llm(r"judgment step", judge("STRONG", "PAUSE", 88))
-    assert direct_vm.run_validator() is True
+    assert direct_vm.run_validator() is False
     # the live failure shape: leader 2 vs validator 97 must never pass, NONE vs WEAK must
     direct_vm.clear_mocks(); mock_sources(direct_vm)
     direct_vm.mock_llm(r"judgment step", judge("NONE", "NO_ACTION", 2))

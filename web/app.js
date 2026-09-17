@@ -4,13 +4,38 @@ const cfg = await (await fetch("./config.json")).json();
 const client = createClient({ chain: { ...studioDevnet, rpcUrls: { default: { http: [cfg.rpc] } } } });
 const $ = (id) => document.getElementById(id);
 const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "";
-const name = (a) => cfg.contract_names[a] || short(a);
+const roleLabels = { vault: "DemoVault", governor: "DemoGovernor", circuit: "Circuit" };
+const sets = [
+  { ...cfg, id: "current", label: "Current live set", note: "Drain path evidence and current vault state." },
+  ...(cfg.previous_sets || []).map((set, index) => ({ ...set, id: `previous-${index}`, label: `Historical set ${index + 1}`, note: set.note || "Historical governance evidence." })),
+];
+let activeSet = sets[0];
+const sameAddress = (a, b) => String(a || "").toLowerCase() === String(b || "").toLowerCase();
+const activeAddress = (role) => activeSet[role];
+const name = (a) => {
+  const role = Object.keys(roleLabels).find((key) => sameAddress(activeAddress(key), a));
+  return role ? roleLabels[role] : (cfg.contract_names?.[a] || short(a));
+};
 const addrLink = (a) => `<a href="${cfg.explorer}/address/${a}" target="_blank" rel="noopener" title="${a}">${name(a)}</a>`;
 const ts = (t) => t ? new Date(t * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC" : "—";
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function read(address, functionName, args = []) {
-  return client.readContract({ address, functionName, args });
+async function read(address, functionName, args = [], attempts = 3) {
+  let last;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await client.readContract({ address, functionName, args });
+    } catch (error) {
+      last = error;
+      if (attempt + 1 < attempts) await pause(250 * 2 ** attempt);
+    }
+  }
+  throw last;
+}
+
+async function readOptional(address, functionName, args = []) {
+  try { return await read(address, functionName, args, 2); } catch { return null; }
 }
 
 // Decode raw GenVM calldata (as the governor stores it) into a plain call string.
@@ -30,7 +55,27 @@ function decodeAction(target, hex) {
   }
 }
 
-let proposals = [], assessments = [], drains = [], protocol = null, byProposal = new Map(), now = 0, gcfg = {};
+let proposals = [], assessments = [], drains = [], protocol = null, byProposal = new Map(), now = 0, gcfg = {}, refreshInFlight = false;
+
+function renderSetChrome() {
+  $("set-title").textContent = activeSet.label;
+  $("set-note").textContent = activeSet.note;
+  $("set-select").value = activeSet.id;
+}
+
+function setSyncState(text, kind = "") {
+  const el = $("set-state");
+  el.textContent = text;
+  el.className = `signal ${kind}`;
+}
+
+function actionLabel(a) {
+  if (a.action_taken === "pause" || a.action_taken === "restrict") {
+    return `<span class="status requested">${a.action_taken} requested</span><span class="muted action-note">child confirmation not indexed here</span>`;
+  }
+  if (a.action_taken === "already_paused") return `<span class="status confirmed">already active</span>`;
+  return `<span class="status none">none</span>`;
+}
 
 function verdictPill(pid) {
   const a = byProposal.get(pid);
@@ -73,13 +118,13 @@ function renderDetail(pid) {
     </div>
     ${banner}
     <div style="margin-top:14px" class="side">
-      <div><div class="label">proposal (from ${addrLink(cfg.governor)})</div><dl>
+      <div><div class="label">proposal (from ${addrLink(activeAddress("governor"))})</div><dl>
         <dt>proposer</dt><dd>${addrLink(p.proposer)} <span class="muted">(${(Number(p.proposer_power) * 100 / Number(p.total_power || 1)).toFixed(1)}% of power, held since ${ts(p.proposer_power_since)})</span></dd>
         <dt>target</dt><dd>${addrLink(p.target)}</dd>
         <dt>votes</dt><dd>for ${p.for_votes} / against ${p.against_votes} / total power ${p.total_power}</dd>
         <dt>created</dt><dd>${ts(p.created_at)}</dd><dt>voting ends</dt><dd>${ts(p.voting_ends)}</dd><dt>eta</dt><dd>${ts(p.eta)}</dd>
       </dl></div>
-      <div><div class="label">assessment (from ${addrLink(cfg.circuit)})</div>${a ? `<dl>
+      <div><div class="label">assessment (from ${addrLink(activeAddress("circuit"))})</div>${a ? `<dl>
         <dt>verdict</dt><dd><span class="pill ${a.verdict}">${a.verdict}</span> ${a.vetoed ? "— veto message emitted" : ""}</dd>
         <dt>hostile</dt><dd>${a.hostile} (confidence ${a.confidence}/100, high ≥ ${gcfg.high_confidence ?? "?"})</dd>
         <dt>description matches calldata</dt><dd class="${a.description_matches_calldata ? "" : "err"}">${a.description_matches_calldata}</dd>
@@ -110,7 +155,7 @@ function renderVault(v) {
   const last = drains[drains.length - 1];
   $("vault").className = "kv";
   $("vault").innerHTML = [
-    ["contract", addrLink(cfg.vault)],
+    ["contract", addrLink(activeAddress("vault"))],
     ["paused", `<b class="${v.paused ? "err" : ""}">${v.paused}</b>`], ["restricted", `<b class="${v.restricted ? "err" : ""}">${v.restricted}</b>`],
     ["balance", gen(v.balance)],
     ["outflow this window", p ? `<b class="${bps >= Number(p.drain_threshold_bps) ? "err" : ""}">${(bps / 100).toFixed(1)}%</b> of ${gen(p.baseline_balance)} <span class="muted">(threshold ${(Number(p.drain_threshold_bps) / 100).toFixed(0)}%, window ${p.window_s}s)</span>` : "—"],
@@ -124,7 +169,7 @@ function renderDrains() {
   $("drain").innerHTML = drains.length ? drains.slice().reverse().map((a) => `<tr class="row" data-idx="${a.index}"><td>${a.index}</td>
     <td><span class="pill ${a.verdict}">${a.verdict}</span></td><td class="${a.drain_above_threshold ? "err" : ""}">${(Number(a.outflow_bps) / 100).toFixed(1)}%</td>
     <td>${a.drain_above_threshold ? "above" : "below"}</td><td>${a.corroboration}</td><td class="muted">${a.model_verdict}</td><td>${a.confidence}</td>
-    <td>${a.sources_ok}/${a.sources_failed.length}${a.sources_failed.length ? ' <span class="err">failed</span>' : ""}</td><td>${a.action_taken}</td><td>${ts(a.assessed_at)}</td></tr>`).join("")
+    <td>${a.sources_ok}/${a.sources_total}${a.sources_failed.length ? ' <span class="err">failed</span>' : ""}</td><td>${actionLabel(a)}</td><td>${ts(a.assessed_at)}</td></tr>`).join("")
     : `<tr><td colspan="10" class="muted">no assessments yet</td></tr>`;
   for (const tr of $("drain").querySelectorAll("tr.row")) tr.onclick = () => renderDrainDetail(Number(tr.dataset.idx));
 }
@@ -132,7 +177,7 @@ function renderDrains() {
 function renderDrainDetail(idx) {
   const a = drains.find((x) => Number(x.index) === idx); if (!a) return;
   const cls = a.verdict === "NO_ACTION" ? "ok" : a.verdict === "PAUSE" ? "bad" : "dim";
-  $("drain-detail").innerHTML = `<div class="banner ${cls}"><b>#${idx} ${a.verdict}</b> — ${esc(a.gate_reason)} · action: ${a.action_taken}${a.bond_slashed > 0 ? " · bond slashed " + gen(a.bond_slashed) : ""}</div>
+  $("drain-detail").innerHTML = `<div class="banner ${cls}"><b>#${idx} ${a.verdict}</b> — ${esc(a.gate_reason)} · action: ${actionLabel(a)}${a.bond_slashed > 0 ? " · bond slashed " + gen(a.bond_slashed) : ""}</div>
     <div class="side" style="margin-top:10px">
       <div><div class="label">MEASURED on-chain (authoritative)</div><dl>
         <dt>balance now</dt><dd>${gen(a.balance)}</dd><dt>balance at window start</dt><dd>${gen(a.baseline_balance)}</dd>
@@ -153,24 +198,48 @@ function renderDrainDetail(idx) {
 }
 
 async function refresh() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+  setSyncState("syncing…");
   try {
+    const protocolId = activeSet.protocol_id || (activeSet.id === "current" ? cfg.protocol_id : null);
     const [vault, ps, as, cc, gc, ds, pr] = await Promise.all([
-      read(cfg.vault, "get_state"), read(cfg.governor, "get_proposals"), read(cfg.circuit, "get_assessments"),
-      read(cfg.circuit, "get_config"), read(cfg.governor, "get_config"), read(cfg.circuit, "get_drain_assessments"),
-      cfg.protocol_id ? read(cfg.circuit, "get_protocol", [cfg.protocol_id]).catch(() => null) : null,
+      read(activeAddress("vault"), "get_state"), read(activeAddress("governor"), "get_proposals"), readOptional(activeAddress("circuit"), "get_assessments"),
+      read(activeAddress("circuit"), "get_config"), read(activeAddress("governor"), "get_config"), readOptional(activeAddress("circuit"), "get_drain_assessments"),
+      protocolId ? readOptional(activeAddress("circuit"), "get_protocol", [protocolId]) : Promise.resolve(null),
     ]);
-    proposals = ps; assessments = as; gcfg = cc; now = Number(gc.now); drains = ds; protocol = pr;
-    byProposal = new Map(); for (const a of as) byProposal.set(Number(a.proposal_id), a);
-    renderVault(vault); renderDrains(); renderProposals(); renderLog();
+    proposals = ps || []; assessments = as || []; gcfg = cc; now = Number(gc.now); drains = ds || []; protocol = pr;
+    byProposal = new Map(); for (const a of assessments) byProposal.set(Number(a.proposal_id), a);
+    renderSetChrome(); renderVault(vault); renderDrains(); renderProposals(); renderLog();
     if (!document.querySelector("#drain-detail .banner") && drains.length) renderDrainDetail(Number(drains[drains.length - 1].index));
-    $("net").textContent = `${cfg.network} · governor ${short(cfg.governor)} · circuit ${short(cfg.circuit)}`;
+    const mode = activeSet.id === "current" ? "LIVE" : "HISTORICAL";
+    $("net").textContent = `${mode} · ${cfg.network} · governor ${short(activeAddress("governor"))} · circuit ${short(activeAddress("circuit"))}`;
     $("updated").textContent = `updated ${new Date().toISOString().slice(11, 19)} UTC`;
+    setSyncState("synced", "live");
     const sel = document.querySelector("#detail h2")?.textContent.match(/#(\d+)/);
     if (sel) renderDetail(Number(sel[1])); else if (proposals.length) renderDetail(Number(proposals[proposals.length - 1].id));
   } catch (e) {
-    $("net").innerHTML = `<span class="err">read failed: ${esc(e.shortMessage || e.message)}</span>`;
+    setSyncState("read failed — retrying", "warn");
+    $("net").innerHTML = `<span class="err">RPC unavailable: ${esc(e.shortMessage || e.message || e)}</span>`;
+    $("updated").textContent = "automatic retry in 20s";
     console.error(e);
+  } finally {
+    refreshInFlight = false;
   }
 }
+
+for (const set of sets) {
+  const option = document.createElement("option");
+  option.value = set.id;
+  option.textContent = set.label;
+  $("set-select").append(option);
+}
+$("set-select").addEventListener("change", async (event) => {
+  activeSet = sets.find((set) => set.id === event.target.value) || sets[0];
+  renderSetChrome();
+  await refresh();
+});
+$("refresh").addEventListener("click", refresh);
+renderSetChrome();
 await refresh();
 setInterval(refresh, 20000);

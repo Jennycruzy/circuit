@@ -2,18 +2,25 @@
   "network": "Studio Next (chain 61997)",
   "rpc": "https://studio-next.genlayer.com/api",
   "explorer": "https://explorer-studio-dev.genlayer.com",
-  "vault": "0x8E30363F60cc25dD98974523C3ed8b491995EdE8",
-  "governor": "0xe999Ec1E22D008aB09975317385A65E4A0a4D454",
-  "circuit": "0xdd09958f03781a558c7b449f9d4eE277a9CD1E20",
+  "vault": "0xbbad9F3bFC25694c250F3334c7fa3c310f7cF90E",
+  "governor": "0x867D7F43484efDfaE55e79e9A37D8C8546e7cf24",
+  "circuit": "0x23C06AD5844112915a261013AdE273e1207f9047",
   "contract_names": {
-    "0x8E30363F60cc25dD98974523C3ed8b491995EdE8": "DemoVault",
-    "0xe999Ec1E22D008aB09975317385A65E4A0a4D454": "DemoGovernor",
-    "0xdd09958f03781a558c7b449f9d4eE277a9CD1E20": "Circuit"
+    "0xbbad9F3bFC25694c250F3334c7fa3c310f7cF90E": "DemoVault",
+    "0x867D7F43484efDfaE55e79e9A37D8C8546e7cf24": "DemoGovernor",
+    "0x23C06AD5844112915a261013AdE273e1207f9047": "Circuit"
   },
   "protocol_id": "demovault",
   "previous_sets": [
     {
-      "note": "governance path proven 2026-09-16 (proposals 0 vetoed, 1 cleared)",
+      "note": "previous drain proof set; paused after the 50% live drain (2026-09-16)",
+      "vault": "0x8E30363F60cc25dD98974523C3ed8b491995EdE8",
+      "governor": "0xe999Ec1E22D008aB09975317385A65E4A0a4D454",
+      "circuit": "0xdd09958f03781a558c7b449f9d4eE277a9CD1E20",
+      "protocol_id": "demovault"
+    },
+    {
+      "note": "governance path proven live (hostile proposal vetoed, benign proposal cleared)",
       "vault": "0x93A35A1a192E2A67e0816d178D8b14ed96590977",
       "governor": "0xad2dd2445ff40Cbcc23D04A539C3c527Af0C5574",
       "circuit": "0x7Fc4784365a6c209753ae35740a89e03bd45a984"
