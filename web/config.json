@@ -11,6 +11,13 @@
     "0x23C06AD5844112915a261013AdE273e1207f9047": "Circuit"
   },
   "protocol_id": "demovault",
+  "operator_set": {
+    "note": "fresh bound operator deployment with configuration management",
+    "vault": "0x25aB3757dC0AaB1B5b1D59330d95435A069F9A96",
+    "governor": "0x8E463f5aFAB5E71b8DeE3d958242a04C98FF9ac4",
+    "circuit": "0xf95A14c88393cE8e9603366A17F9282DC42e56A8",
+    "protocol_id": "production-vault"
+  },
   "previous_sets": [
     {
       "note": "previous drain proof set; paused after the 50% live drain (2026-09-16)",

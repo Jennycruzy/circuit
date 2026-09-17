@@ -6,6 +6,7 @@ intent before execution and measures vault outflow before it decides to pause.
 ## Start here
 
 **Live UI:** [Open the published Circuit UI](https://circuit-lemon-five.vercel.app/).
+**Operator console:** [Open the wallet-gated operator console](https://circuit-lemon-five.vercel.app/operator.html).
 
 In 30 seconds:
 

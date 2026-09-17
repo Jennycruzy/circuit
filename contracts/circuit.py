@@ -506,6 +506,58 @@ class Circuit(gl.contract.Contract):
         p.criteria = criteria
         p.registered_at = p.baseline_at
 
+    @gl.public.write
+    def update_protocol(self, protocol_id: str, target: str, drain_threshold_bps: u256,
+                        window_s: u256, evidence_sources: str, criteria: str,
+                        reset_baseline: bool) -> None:
+        if gl.message.sender_address != self.deployer:
+            raise gl.vm.UserError("only the deployer may update protocols")
+        if protocol_id not in self.watchlist:
+            raise gl.vm.UserError("unknown protocol")
+        if drain_threshold_bps == 0 or drain_threshold_bps > 10_000:
+            raise gl.vm.UserError("bad threshold")
+        if window_s == 0:
+            raise gl.vm.UserError("window must be positive")
+        try:
+            srcs = json.loads(evidence_sources)
+        except Exception:
+            raise gl.vm.UserError("evidence_sources must be a JSON list of URLs")
+        if (not isinstance(srcs, list) or not srcs
+                or not all(isinstance(u, str) and u.strip() for u in srcs)
+                or not all(u.startswith("http://") or u.startswith("https://") for u in srcs)):
+            raise gl.vm.UserError("evidence_sources must be a non-empty HTTP(S) URL list")
+        if not isinstance(criteria, str) or not criteria.strip():
+            raise gl.vm.UserError("criteria must be non-empty")
+        t = Address(target)
+        target_contract = gl.contract.get_at(t)
+        try:
+            state = target_contract.view().get_state()
+            iface = target_contract.view(catch_vm_error=True).privileged_methods()
+        except Exception:
+            raise gl.vm.UserError("target must expose get_state and privileged_methods")
+        if not isinstance(state, dict) or not all(k in state for k in ("balance", "total_withdrawals", "paused", "restricted")):
+            raise gl.vm.UserError("target get_state is incomplete")
+        methods = [str(m) for m in iface] if isinstance(iface, list) else []
+        if "pause" not in methods or "restrict" not in methods:
+            raise gl.vm.UserError("target must expose pause and restrict")
+        baseline_balance = int(state["balance"])
+        baseline_withdrawals = int(state["total_withdrawals"])
+        if baseline_balance <= 0:
+            raise gl.vm.UserError("target balance must be positive")
+        if baseline_withdrawals < 0:
+            raise gl.vm.UserError("target withdrawals cannot be negative")
+        p = self.watchlist[protocol_id]
+        if t != p.target and not reset_baseline:
+            raise gl.vm.UserError("target changes require reset_baseline=true")
+        p.target = t
+        p.drain_threshold_bps = drain_threshold_bps
+        p.window_s = window_s
+        p.evidence_sources = evidence_sources
+        p.criteria = criteria
+        if reset_baseline:
+            p.baseline_balance = baseline_balance
+            p.baseline_withdrawals = baseline_withdrawals
+            p.baseline_at = _now()
     @gl.public.view
     def get_protocol(self, protocol_id: str) -> dict:
         if protocol_id not in self.watchlist:

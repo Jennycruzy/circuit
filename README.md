@@ -20,6 +20,7 @@ transaction in [`docs/verification.md`](docs/verification.md).
 ## Open the proof first
 
 **Public UI:** [Open the live Circuit UI](https://circuit-lemon-five.vercel.app/).
+**Operator console:** [Open the wallet-gated operator console](https://circuit-lemon-five.vercel.app/operator.html) for protocol registration, bond funding, and signed assessments.
 
 Circuit is easiest to verify by clicking the live proof, not by reading the
 repository. It is a read-only page: no wallet, setup, or trust in a backend is
