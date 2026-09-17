@@ -169,6 +169,13 @@ function renderVault(v) {
   const outflow = p ? Math.max(0, Number(v.total_withdrawals) - Number(p.baseline_withdrawals)) : 0;
   const bps = p && Number(p.baseline_balance) > 0 ? Math.floor(outflow * 10000 / Number(p.baseline_balance)) : 0;
   const last = drains[drains.length - 1];
+  const heroState = v.paused ? "PAUSED" : v.restricted ? "RESTRICTED" : "MONITORING";
+  const heroStateEl = $("hero-vault-state");
+  if (heroStateEl) heroStateEl.textContent = heroState;
+  const heroBalanceEl = $("hero-balance");
+  if (heroBalanceEl) heroBalanceEl.textContent = gen(v.balance);
+  const heroVerdictEl = $("hero-last-verdict");
+  if (heroVerdictEl) heroVerdictEl.textContent = last ? last.verdict : "NO EVENTS";
   $("vault").className = "kv";
   $("vault").innerHTML = [
     ["contract", addrLink(activeAddress("vault"))],
