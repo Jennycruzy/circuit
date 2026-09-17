@@ -92,7 +92,7 @@
 - Contracts use the v0.3.0 header/API (see verification log).
 
 ## Next
-- Publish `web/` to Vercel manually and paste the resulting URL into the README and `SUBMISSION.md`.
+- Redeploy the latest `main` to Vercel with `web/` as Root Directory (or the root rewrite fallback) and paste the resulting URL into the README and `SUBMISSION.md`.
 - Optional: add more live benign proposals before claiming a statistically meaningful false-veto rate; the six fixtures are intentionally excluded.
 
 ## Blocked

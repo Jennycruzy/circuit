@@ -194,24 +194,28 @@ allocations — are documented in `docs/verification.md` and `PROGRESS.md`.
 
 ## Publish the UI
 
-The app is a static deployment rooted at `web/`. The simplest manual CLI flow
-from the repository root is:
+The app is static. Two deployment layouts are supported:
 
 ```bash
 npx --yes vercel login          # complete the browser/device login once
 npx --yes vercel --prod --yes web
 ```
 
-When Vercel asks for a project, choose your account, create/link the project,
-and keep `web/` as the deploy directory. The output URL is the judge link.
-For the dashboard flow, import this repository, set **Root Directory** to
-`web`, choose **Other**/static, leave build and install commands empty, and
-Deploy. Then replace the public-UI line at the top of this README and in
-[`SUBMISSION.md`](SUBMISSION.md) with the generated URL.
+The CLI command above is the cleanest path: it deploys `web/` as the project
+root. If you import the GitHub repository in the dashboard, set **Root
+Directory** to `web`, choose **Other**/static, leave build and install commands
+empty, and Deploy. The output URL is the judge link.
+
+If the Vercel project is already configured with the repository root, pull the
+latest `main` and redeploy; the root [`vercel.json`](vercel.json) routes the
+homepage and its static assets into `web/`. Do not set the output directory to
+`web` while also setting Root Directory to `web`—that produces an empty root
+and a Vercel 404. Then replace the public-UI line at the top of this README and
+in [`SUBMISSION.md`](SUBMISSION.md) with the generated URL.
 
 The frontend uses no private key and makes no on-chain writes; it only reads the
-public Studio Next RPC. The included `web/vercel.json` adds conservative browser
-security headers.
+public Studio Next RPC. Both Vercel configs add conservative browser security
+headers.
 
 ## Not simulated
 
